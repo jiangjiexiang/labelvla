@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/wasmUrl-BSGiP7d6.js","assets/parquet-wasm-iT2V1gJo.js","assets/rolldown-runtime-B0Z9INg1.js"])))=>i.map(i=>d[i]);
+import{s as e}from"./zip--V-uVjsL.js";var t=null;async function n(){if(!t){let[{wasmUrl:n},r]=await Promise.all([e(()=>import(`./wasmUrl-BSGiP7d6.js`),__vite__mapDeps([0,1,2])),e(()=>import(`./parquet-wasm-iT2V1gJo.js`).then(e=>e.n),__vite__mapDeps([1,2]))]);t=r.default({module_or_path:n}).then(()=>r)}return t}export{n as getParquetWasm};

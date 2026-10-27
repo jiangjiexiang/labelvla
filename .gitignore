@@ -1,0 +1,26 @@
+# 数据集与运行数据
+/data/
+/integration/**/data/
+
+# Node / 前端构建产物
+node_modules/
+dist/
+/integration-v2/studio/assets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# 归档与预览构建
+*.tar.gz
+/integration-v2/graph-preview/
+/integration-v2/migration-preview/
+/integration-v2/picker-preview/
+/integration-v2/migration-final/
+
+# 环境与日志
+.env
+*.log
+.DS_Store

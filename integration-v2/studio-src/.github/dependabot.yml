@@ -1,0 +1,75 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 14
+      semver-patch-days: 7
+    open-pull-requests-limit: 3
+    rebase-strategy: disabled
+    groups:
+      npm-minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+      npm-major:
+        applies-to: version-updates
+        patterns:
+          - '*'
+        update-types:
+          - major
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - '*'
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+      - dependency-name: react-intl
+        update-types:
+          - version-update:semver-major
+      - dependency-name: vitepress
+        update-types:
+          - version-update:semver-major
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - '*'
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - '*'
+  - package-ecosystem: docker
+    directories:
+      - /
+      - /tests/npm-consumer
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 2
+    groups:
+      docker:
+        applies-to: version-updates
+        patterns:
+          - '*'
+      docker-security:
+        applies-to: security-updates
+        patterns:
+          - '*'

@@ -1,0 +1,48 @@
+---
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for hatch-vcs version detection
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.10'
+      - shell: bash
+        run: |
+          make setup
+      - name: Lint
+        shell: bash
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          uv run ruff format --check
+          uv run ruff check
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          packages: xvfb libqt5widgets5
+          version: 1.0
+      - name: Test
+        shell: bash
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          MPLBACKEND: agg
+        run: |
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+          export DISPLAY=:99
+          make test
+      - name: Build wheel and install
+        shell: bash
+        run: |-
+          uv build
+          uv pip install dist/labelvla-*.whl
+          labelvla --version

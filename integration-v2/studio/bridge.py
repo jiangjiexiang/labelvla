@@ -1,12 +1,23 @@
 import os
 from pathlib import Path
 from fastapi import HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.routing import Mount
 from labelme.lerobot_server.app import create_app
 
 root = Path('/data').resolve()
 app = create_app()
+
+# Studio 直接部署在站点根路径，移除 LabelVLA 自带的首页与 /static 路由。
+app.router.routes = [
+    route
+    for route in app.router.routes
+    if not (
+        (getattr(route, 'path', None) == '/' and not isinstance(route, Mount))
+        or (isinstance(route, Mount) and route.path == '/static')
+    )
+]
 
 def safe_dataset(dataset: str) -> Path:
     p = Path(dataset).resolve()
@@ -33,30 +44,52 @@ def file(dataset: str, path: str):
         raise HTTPException(404, '文件不存在')
     return FileResponse(p)
 
-app.mount('/studio', StaticFiles(directory='/integration/studio', html=True), name='studio')
-
 from dataclasses import asdict
 import hashlib
 import json
 import tempfile
 from threading import Lock
+import pyarrow.parquet as pq
 from labelme.lerobot.segment import SegmentStore, interpolate_bbox_center
 from labelme.lerobot_server.app import _deserialize_segments
 
 annotation_lock = Lock()
 
+def episode_length_v2(p: Path, episode: int):
+    with (p / 'meta/episodes.jsonl').open() as f:
+        for line in f:
+            ep = json.loads(line)
+            if ep.get('episode_index') == episode:
+                return int(ep['length'])
+    return None
+
+def episode_length_v3(p: Path, episode: int):
+    shards = sorted(
+        (p / 'meta/episodes').glob('chunk-*/file-*.parquet'),
+        key=lambda f: (int(f.parent.name.split('-')[1]), int(f.stem.split('-')[1])),
+    )
+    for shard in shards:
+        table = pq.read_table(shard, columns=['episode_index', 'length'])
+        for row in table.to_pylist():
+            if int(row['episode_index']) == episode:
+                return int(row['length'])
+    return None
+
 def segment_store(dataset: str, episode: int):
     p = safe_dataset(dataset)
     info = json.loads((p / 'meta/info.json').read_text())
-    if not str(info.get('codebase_version', '')).startswith('v2'):
-        raise HTTPException(400, '标注目前只支持 v2 数据集')
+    version = str(info.get('codebase_version', ''))
     if episode < 0:
         raise HTTPException(400, '片段编号无效')
-    with (p / 'meta/episodes.jsonl').open() as f:
-        ep = next((e for line in f if (e := json.loads(line)).get('episode_index') == episode), None)
-    if ep is None:
+    if version.startswith('v2'):
+        length = episode_length_v2(p, episode)
+    elif version.startswith('v3'):
+        length = episode_length_v3(p, episode)
+    else:
+        raise HTTPException(400, f'标注不支持该数据集版本: {version or "unknown"}')
+    if length is None:
         raise HTTPException(404, '片段不存在')
-    return SegmentStore(p, episode), int(ep['length'])
+    return SegmentStore(p, episode), length
 
 def revision(store):
     if not store.file_path.exists():
@@ -104,3 +137,12 @@ def bridge_write_segments(dataset: str, episode: int, payload: dict):
         finally:
             if os.path.exists(tmp): os.unlink(tmp)
         return {'revision': revision(store), 'segments': [asdict(s) for s in segments]}
+
+
+# 必须最后挂载：/studio 下的 StaticFiles 会匹配所有未命中 API 的请求。
+@app.get('/')
+def home():
+    return RedirectResponse('/studio/')
+
+
+app.mount('/studio', StaticFiles(directory='/integration/studio', html=True), name='studio')

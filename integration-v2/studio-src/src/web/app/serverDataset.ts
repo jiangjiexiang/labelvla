@@ -68,7 +68,8 @@ export async function connectServerDataset(
   };
   setAnnotationDataset?.('');
   await initialize(source);
-  if (String(meta.codebase_version || '').startsWith('v2')) {
+  const version = String(meta.codebase_version || '');
+  if (version.startsWith('v2') || version.startsWith('v3')) {
     setAnnotationDataset?.(dataset);
   }
   return { name: dataset.split('/').filter(Boolean).pop() || dataset };

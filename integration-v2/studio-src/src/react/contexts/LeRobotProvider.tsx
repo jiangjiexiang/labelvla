@@ -836,6 +836,7 @@ export const LeRobotDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const subtaskValue = useMemo(
     () => ({
       canAnnotate: subtask.canAnnotate,
+      episodeLength: currentFrames.length,
       overlay: subtask.overlay,
       currentSegments: subtask.currentSegments,
       knownLabels: subtask.knownLabels,
@@ -850,7 +851,7 @@ export const LeRobotDataProvider: React.FC<{ children: React.ReactNode }> = ({ c
       replaceEpisodeSegments: subtask.replaceEpisodeSegments,
       removeSegment: subtask.removeSegment,
     }),
-    [subtask],
+    [subtask, currentFrames.length],
   );
 
   // 兼容层：完整 value 供 useLeRobot() 的现有消费者使用

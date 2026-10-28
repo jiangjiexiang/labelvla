@@ -45,7 +45,8 @@ function pickBoxes(native: { startFrame: number; endFrame: number }, source: Seg
 export function SubtaskBridge() {
   const annotation = useAnnotation();
   const { selectedEpisodeIndex } = useLeRobotSelection();
-  const { canAnnotate, currentSegments, replaceEpisodeSegments } = useLeRobotSubtask();
+  const { canAnnotate, currentSegments, episodeLength, replaceEpisodeSegments } =
+    useLeRobotSubtask();
 
   const suppressPushRef = useRef<string | null>(null);
   const nativeReadyRef = useRef(false);
@@ -94,6 +95,7 @@ export function SubtaskBridge() {
   // sidecar -> native
   useEffect(() => {
     if (!annotation || !active || !annotation.dataset || annotation.saving || !canAnnotate) return;
+    if (episodeLength <= 0) return;
     if (nativeSig === sidecarSig) {
       nativeReadyRef.current = true;
       return;
@@ -117,6 +119,7 @@ export function SubtaskBridge() {
     annotation,
     active,
     canAnnotate,
+    episodeLength,
     nativeSig,
     sidecar,
     sidecarSig,

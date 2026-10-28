@@ -81,6 +81,7 @@ export interface LeRobotPlaybackContextType {
 
 export interface LeRobotSubtaskContextType {
   canAnnotate: boolean;
+  episodeLength: number;
   overlay: ReadonlyMap<number, SubtaskSegment[]>;
   currentSegments: SubtaskSegment[];
   knownLabels: string[];

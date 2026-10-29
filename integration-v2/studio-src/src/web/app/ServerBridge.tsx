@@ -154,6 +154,7 @@ export function ServerBridge({
         if (!next && !busy) onClose();
       }}
     >
+      {open && (
       <DialogContent className="flex h-[min(80vh,640px)] w-[min(640px,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="flex-row items-center gap-2 border-b border-border px-5 py-4 text-left">
           <DialogTitle className="text-base font-semibold">选择服务器数据集</DialogTitle>
@@ -254,6 +255,7 @@ export function ServerBridge({
           </Button>
         </DialogFooter>
       </DialogContent>
+      )}
     </Dialog>
   );
 }

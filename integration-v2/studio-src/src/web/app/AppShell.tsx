@@ -19,12 +19,15 @@ import {
 } from '@';
 import { resolveDroppedItem, type SampleDataset } from '@/platform';
 import { SourceController } from '../services/SourceController';
-import { setUrlParamInLocation, type ParsedSourceUrl } from '../utils/sourceUrl';
+import {
+  getUrlParamFromLocation,
+  setUrlParamInLocation,
+  type ParsedSourceUrl,
+} from '../utils/sourceUrl';
 import { getDatasetDisplayName } from '@/core';
 import { useUrlDrivenSourceController } from '../hooks/useUrlDrivenSourceController';
 import { Upload } from 'lucide-react';
 import { ServerBridge } from './ServerBridge';
-import { useAutoConnectServerDataset } from './serverDataset';
 import { SubtaskBridge } from '../annotation/SubtaskBridge';
 import { AnnotationPanel } from '../annotation/AnnotationPanel';
 import './unified.css';
@@ -95,10 +98,9 @@ export function AppShell() {
   const [datasetLabel, setDatasetLabel] = useState<string | undefined>(undefined);
   const [welcomeRequest, setWelcomeRequest] = useState<ParsedSourceUrl | null>(null);
 
-  useAutoConnectServerDataset(setDatasetLabel);
-
   // Dialog states
-  const [serverDialogOpen, setServerDialogOpen] = useState(false);
+  // 启动时若 URL 未指定数据源，直接弹出数据集选择框，而不是自动打开某个数据集
+  const [serverDialogOpen, setServerDialogOpen] = useState(() => !getUrlParamFromLocation());
   const [remoteDialogOpen, setRemoteDialogOpen] = useState(false);
   const [sampleDialogOpen, setSampleDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -320,7 +322,11 @@ export function AppShell() {
         onOpenHealth={lastValidationReport ? () => setHealthDialogOpen(true) : undefined}
       />
 
-      <ServerBridge open={serverDialogOpen} onClose={() => setServerDialogOpen(false)} onOpened={setDatasetLabel} />
+      <ServerBridge
+        open={serverDialogOpen}
+        onClose={() => setServerDialogOpen(false)}
+        onOpened={setDatasetLabel}
+      />
       <SubtaskBridge />
 
       <div className="unified-workspace flex flex-1 min-h-0 min-w-0">

@@ -29,6 +29,14 @@ import { computeSplits, splitsIndicesToInfoSplits } from '@/core';
 import { buildExportTaskPlan, resolveExportTaskIndex } from './TaskPlan';
 import { applySubtaskFeaturesForExport, buildExportSubtaskPlan } from './SubtaskExportPlan';
 
+function hasEpisodeStats(episode: EpisodeMetadata, featureKey: string): boolean {
+  const nested = (episode as Record<string, unknown>).stats as
+    | Record<string, Record<string, unknown>>
+    | undefined;
+  if (nested?.[featureKey]?.count != null) return true;
+  return (episode as Record<string, unknown>)[`stats/${featureKey}/count`] != null;
+}
+
 export class ExportService {
   private dataLoader: LeRobotDataLoader;
   private adapter: ExportAdapter;
@@ -154,6 +162,14 @@ export class ExportService {
       throw new Error('Trimming requires exporting frame data');
     }
     const episodesForMeta = trimPlan.episodes;
+    const visualFeatureKeys = Object.entries(info.features)
+      .filter(([, feature]) => ['video', 'image', 'depth'].includes(feature.dtype))
+      .map(([key]) => key);
+    const needsVisualStats =
+      visualFeatureKeys.length > 0 &&
+      episodesForMeta.some((episode) =>
+        visualFeatureKeys.some((key) => !hasEpisodeStats(episode, key)),
+      );
     const trimmedStats = new Map<number, DatasetStats>();
     let videoOffsets: EpisodeVideoOffsets | null = null;
     let dataLayout: V3DataLayout | undefined;
@@ -202,19 +218,33 @@ export class ExportService {
       reportPhaseStart(1, 'Validating training statistics...', 'metadata');
       stats = await computeDatasetStats(trimPlan.dataLoader, infoForExport, episodesForMeta, {
         signal,
-        ...(trimPlan.ranges.size > 0
+        ...(trimPlan.ranges.size > 0 || needsVisualStats
           ? {
               getEpisodeStats: async (episode: EpisodeMetadata) => {
                 const range = trimPlan.ranges.get(episode.episode_index);
-                return range
-                  ? computeTrimVisualStats(
-                      this.dataLoader,
-                      info,
-                      episode.episode_index,
-                      range,
-                      signal,
-                    )
-                  : undefined;
+                if (range) {
+                  return computeTrimVisualStats(
+                    this.dataLoader,
+                    info,
+                    episode.episode_index,
+                    range,
+                    signal,
+                  );
+                }
+                if (!needsVisualStats) return undefined;
+                return computeTrimVisualStats(
+                  this.dataLoader,
+                  info,
+                  episode.episode_index,
+                  {
+                    startFrame: 0,
+                    endFrame: episode.length - 1,
+                    fromSec: 0,
+                    toSec: episode.length / info.fps,
+                    sourceLength: episode.length,
+                  },
+                  signal,
+                );
               },
               onEpisodeStats: (episode: EpisodeMetadata, episodeStats: DatasetStats) => {
                 trimmedStats.set(episode.episode_index, episodeStats);

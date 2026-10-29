@@ -1,10 +1,4 @@
-import { useEffect, useRef } from 'react';
 import type { DataSource } from '../../core/datasource/types';
-import { useAnnotation } from '../annotation/AnnotationContext';
-import { useLeRobotData } from '../../react/contexts/LeRobotContext';
-import { getUrlParamFromLocation } from '../utils/sourceUrl';
-
-export const DEFAULT_SERVER_DATASET = '/data/panda_droid-pick_color-20261013';
 
 export class ServerSource implements DataSource {
   private dataset: string;
@@ -73,43 +67,4 @@ export async function connectServerDataset(
     setAnnotationDataset?.(dataset);
   }
   return { name: dataset.split('/').filter(Boolean).pop() || dataset };
-}
-
-/**
- * Connect the default server dataset right after the shell mounts so the
- * annotation page never asks the user to pick a dataset.
- */
-export function useAutoConnectServerDataset(onOpened?: (name: string) => void) {
-  const { info, isLoading, initialize } = useLeRobotData();
-  const annotation = useAnnotation();
-  const startedRef = useRef(false);
-
-  useEffect(() => {
-    if (startedRef.current || info !== null || isLoading) return;
-    if (getUrlParamFromLocation()) return;
-    startedRef.current = true;
-    void (async () => {
-      try {
-        try {
-          const { name } = await connectServerDataset(
-            DEFAULT_SERVER_DATASET,
-            initialize,
-            annotation?.setDataset,
-          );
-          onOpened?.(name);
-        } catch {
-          const datasets = await fetchServerDatasets();
-          if (datasets.length === 0) return;
-          const { name } = await connectServerDataset(
-            datasets[0].path,
-            initialize,
-            annotation?.setDataset,
-          );
-          onOpened?.(name);
-        }
-      } catch (error) {
-        console.warn('自动连接服务器数据集失败', error);
-      }
-    })();
-  }, [annotation, info, isLoading, initialize, onOpened]);
 }

@@ -169,7 +169,7 @@ bridge 读写 segments 时 `skill/object/target/adverb` 走现有 extras 透传�
 
 - 项目:`/home/robam/labelvla-docker`,部署见 `integration-v2/README.txt`
 - 前端源码 `integration-v2/studio-src`,构建 `BASE_PATH=/studio/ npm run build`,
-  部署 `rsync -a --delete --exclude bridge.py --exclude __pycache__ dist/ ../studio/`
+  部署 `rsync -a --delete --exclude bridge.py --exclude bridge_ext --exclude __pycache__ dist/ ../studio/`(bridge_ext 必须排除,里面是平台后端源码)
 - 后端 `integration-v2/studio/bridge.py`(bind-mount 进容器 `labelvla-studio-integrated`,改后 `docker restart`)
 - 容器 Python 无 requests/httpx,用 urllib;数据根 `/data`(宿主机 `./data`)
 - 数据集分 v2(`videos/chunk-000/<cam>/episode_NNNNNN.mp4`)和 v3(`videos/<cam>/chunk-*/file-*.mp4` + parquet 时间戳),v3 帧偏移逻辑已在 bridge.py `_episode_video`

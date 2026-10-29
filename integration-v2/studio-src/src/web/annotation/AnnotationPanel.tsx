@@ -1,21 +1,76 @@
-import { Badge, Button, Separator } from '@/ui';
-import type { Segment } from './AnnotationContext';
-import { useAnnotation } from './AnnotationContext';
+import { useEffect, useState } from 'react';
+import { Badge, Button, Separator, cn } from '@/ui';
+import type { DictKind, Segment } from './AnnotationContext';
+import { composeSegmentText, useAnnotation } from './AnnotationContext';
+import { StatusBar } from './StatusBar';
+import { ProblemMenu } from './ProblemMenu';
 
 const inputClass =
   'h-8 w-full min-w-0 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
+const DICT_FIELDS: {kind: DictKind; label: string}[] = [
+  {kind: 'skill', label: '技能'},
+  {kind: 'object', label: '对象'},
+  {kind: 'target', label: '目标'},
+  {kind: 'adverb', label: '状语'},
+];
+
+/** 字典下拉 + 可输入:失焦/回车提交,新词自动补入本地字典并上报后端待确认。 */
+function DictInput({kind, label, value, dict, disabled, onCommit}: {kind: DictKind; label: string; value: string; dict: string[]; disabled?: boolean; onCommit: (word: string) => void}) {
+  const [v, setV] = useState(value);
+  useEffect(() => setV(value), [value]);
+  const commit = () => {
+    const nv = v.trim();
+    if (nv !== value.trim()) onCommit(nv);
+  };
+  return (
+    <label className="flex items-center gap-1.5">
+      <span className="w-8 shrink-0 text-[11px] text-muted-foreground">{label}</span>
+      <input
+        list={`dict-${kind}`}
+        value={v}
+        disabled={disabled}
+        onChange={e => setV(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        placeholder="下拉选择或输入新词"
+        className={inputClass}
+      />
+      <datalist id={`dict-${kind}`}>{dict.map(w => <option key={w} value={w} />)}</datalist>
+    </label>
+  );
+}
+
 export function AnnotationPanel() {
   const a = useAnnotation();
+  const [menu, setMenu] = useState<{x: number; y: number} | null>(null);
   if (!a) return null;
 
   const active = a.episode !== null && a.episode === a.currentEpisode;
   const segment: Segment | undefined = active ? a.segments[a.selected] : undefined;
   const inSegment =
     !!segment && a.frame >= segment.start_frame && a.frame <= segment.end_frame;
+  const problemActive = !!segment?.problem && !segment.problem.fixed_at;
 
   const patchSegment = (index: number, value: Segment) => {
     a.update(a.segments.map((item, itemIndex) => (itemIndex === index ? value : item)));
+  };
+
+  const setField = (kind: DictKind, word: string) => {
+    if (!segment || a.readOnly) return;
+    if (word && !a.dict[kind].includes(word)) a.addDictWord(kind, word);
+    const next: Segment = {...segment};
+    next[kind] = word || undefined;
+    const composed = composeSegmentText(next);
+    // 老数据没有四项字段:用户没填过任何一项时不动原 text,填过则以拼句为准
+    if (composed || segment.skill || segment.object || segment.target || segment.adverb) next.text = composed;
+    patchSegment(a.selected, next);
   };
 
   const removeBox = (index: number) => {
@@ -41,16 +96,20 @@ export function AnnotationPanel() {
               已修改
             </Badge>
           )}
-          <Button
-            size="sm"
-            className="h-7 px-2 text-xs"
-            disabled={!a.dirty || a.saving}
-            onClick={() => void a.save()}
-          >
-            {a.saving ? '保存中…' : '保存'}
-          </Button>
+          {!a.readOnly && (
+            <Button
+              size="sm"
+              className="h-7 px-2 text-xs"
+              disabled={!a.dirty || a.saving}
+              onClick={() => void a.save()}
+            >
+              {a.saving ? '保存中…' : '保存'}
+            </Button>
+          )}
         </div>
       </div>
+
+      <StatusBar />
 
       {a.error && (
         <p role="status" className="m-0 text-amber-600">
@@ -72,11 +131,42 @@ export function AnnotationPanel() {
           <div className="flex flex-col gap-1">
             <span className="text-[11px] font-medium text-muted-foreground">当前 Subtask 片段</span>
             {segment ? (
-              <div className="rounded-md border border-border bg-muted/40 px-2 py-1.5">
+              <div
+                className={cn(
+                  'rounded-md border px-2 py-1.5',
+                  problemActive ? 'border-red-500/50 bg-red-500/5' : 'border-border bg-muted/40',
+                )}
+                onContextMenu={e => {
+                  e.preventDefault();
+                  if (!a.readOnly) setMenu({x: e.clientX, y: e.clientY});
+                }}
+                title={a.readOnly ? undefined : '右键可标记无效片段'}
+              >
                 <div className="font-mono text-[11px] text-muted-foreground">
                   #{a.selected} · {segment.start_frame}–{segment.end_frame} 帧
                 </div>
-                <div className="truncate text-[12px]">{segment.text || '未命名片段'}</div>
+                <div className={cn('truncate text-[12px]', problemActive && 'text-red-500 line-through decoration-red-500')}>
+                  {segment.text || '未命名片段'}
+                </div>
+                {problemActive && segment.problem && (
+                  <div className="mt-1 flex items-center justify-between gap-1 text-[11px] text-red-500">
+                    <span className="min-w-0 truncate">问题:{segment.problem.reason} · {segment.problem.by}</span>
+                    {!a.readOnly && (
+                      <button
+                        type="button"
+                        className="shrink-0 rounded border border-red-500/40 px-1 py-0.5 text-[10px] hover:bg-red-500/10"
+                        onClick={() => a.fixProblem(a.selected)}
+                      >
+                        标记已修正
+                      </button>
+                    )}
+                  </div>
+                )}
+                {segment.problem?.fixed_at && (
+                  <div className="mt-0.5 text-[10px] text-muted-foreground">
+                    原问题「{segment.problem.reason}」已修正
+                  </div>
+                )}
               </div>
             ) : (
               <p className="m-0 text-amber-600">
@@ -92,22 +182,51 @@ export function AnnotationPanel() {
             <>
               <Separator />
               <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-muted-foreground">结构化描述（字典下拉，可输入新词）</span>
+                {DICT_FIELDS.map(f => (
+                  <DictInput
+                    key={f.kind}
+                    kind={f.kind}
+                    label={f.label}
+                    value={segment[f.kind] ?? ''}
+                    dict={a.dict[f.kind]}
+                    disabled={a.readOnly}
+                    onCommit={word => setField(f.kind, word)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {segment && (
+            <>
+              <Separator />
+              <div className="flex flex-col gap-1">
                 <span className="text-[11px] font-medium text-muted-foreground">目标框 / 手动轨迹</span>
                 <input
                   aria-label="目标框名称"
+                  list="dict-boxlabel"
                   value={a.boxLabel}
+                  disabled={a.readOnly}
                   onChange={(event) => a.setBoxLabel(event.target.value)}
+                  onBlur={() => {
+                    const w = a.boxLabel.trim();
+                    if (w && !a.dict.object.includes(w)) a.addDictWord('object', w);
+                  }}
                   placeholder="目标框名称"
                   className={inputClass}
                 />
-                {!inSegment && (
+                <datalist id="dict-boxlabel">{a.dict.object.map(w => <option key={w} value={w} />)}</datalist>
+                {!a.readOnly && !inSegment && (
                   <p className="m-0 text-amber-600">播放头不在该片段范围内，先跳回片段内再绘制。</p>
                 )}
-                <p className="m-0 text-[11px] text-muted-foreground">
-                  {a.track
-                    ? `标记轨迹中 · 第 ${a.frame} 帧：点击画面设置目标中心。`
-                    : '在第一个相机画面拖动以创建目标框。'}
-                </p>
+                {!a.readOnly && (
+                  <p className="m-0 text-[11px] text-muted-foreground">
+                    {a.track
+                      ? `标记轨迹中 · 第 ${a.frame} 帧：点击画面设置目标中心。`
+                      : '在第一个相机画面拖动以创建目标框。'}
+                  </p>
+                )}
 
                 {segment.bboxes.length === 0 && (
                   <p className="m-0 text-[11px] text-muted-foreground">该片段还没有目标框。</p>
@@ -134,15 +253,17 @@ export function AnnotationPanel() {
                         {box.keypoints.length} 个关键点
                       </span>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                      aria-label="删除目标框"
-                      onClick={() => removeBox(index)}
-                    >
-                      ×
-                    </Button>
+                    {!a.readOnly && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        aria-label="删除目标框"
+                        onClick={() => removeBox(index)}
+                      >
+                        ×
+                      </Button>
+                    )}
                   </div>
                 ))}
 
@@ -155,7 +276,7 @@ export function AnnotationPanel() {
                   {a.showMasks ? '分割轮廓预览: 开' : '分割轮廓预览: 关'}
                 </Button>
 
-                {a.selectedBox >= 0 && (
+                {!a.readOnly && a.selectedBox >= 0 && (
                   <div className="flex gap-1">                    <Button
                       variant={a.track ? 'secondary' : 'outline'}
                       size="sm"
@@ -185,7 +306,7 @@ export function AnnotationPanel() {
               </div>
             </>
           )}
-          {segment && (
+          {segment && !a.readOnly && (
             <>
               <Separator />
               <div className="flex flex-col gap-1">
@@ -241,11 +362,15 @@ export function AnnotationPanel() {
               </div>
             </>
           )}
+          {a.readOnly && (
+            <p className="m-0 text-[11px] text-muted-foreground">审核模式为只读，请使用上方「通过 / 打回」。</p>
+          )}
           <p className="m-0 text-[11px] text-muted-foreground">
-            当前帧 {a.frame} · Ctrl/⌘+S 保存 · Esc 退出轨迹
+            当前帧 {a.frame} · Q 起点 · R 终点 · Enter 新建片段 · Ctrl/⌘+S 保存 · Esc 退出轨迹
           </p>
         </>
       )}
+      <ProblemMenu anchor={menu} onClose={() => setMenu(null)} onPick={reason => a.markProblem(a.selected, reason)} />
     </aside>
   );
 }

@@ -1,9 +1,8 @@
 """B 组共享助手:对 A 组(db/auth)和 bridge.py 的依赖统一收口在这一层。
 
 A 组契约(docs/platform-plan.md 0.1 / 设计文档 2.1):
-  bridge_ext.db.get_db() -> sqlite3.Connection(每次新建,平台库 /data/.platform/platform.db)
-  bridge_ext.auth 提供登录态校验。本层只假设存在 current_user(request) -> dict | None
-  (含 id/username/role);若 A 组实现名不同,只需改本文件一处。
+  bridge_ext.db.get_db() -> sqlite3.Connection(平台库 /data/.platform/platform.db)
+  bridge_ext.auth.current_user(request) -> dict | None(含 id/username/role/must_change_password)
 
 bridge.py 由 Wave 0 负责改造,本包模块一律惰性 import bridge,避免循环依赖。
 """

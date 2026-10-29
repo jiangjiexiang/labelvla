@@ -20,19 +20,18 @@ import {
 import { resolveDroppedItem, type SampleDataset } from '@/platform';
 import { SourceController } from '../services/SourceController';
 import {
-  getUrlParamFromLocation,
   setUrlParamInLocation,
   type ParsedSourceUrl,
 } from '../utils/sourceUrl';
 import { getDatasetDisplayName } from '@/core';
 import { useUrlDrivenSourceController } from '../hooks/useUrlDrivenSourceController';
 import { Upload } from 'lucide-react';
-import { ServerBridge } from './ServerBridge';
 import { SubtaskBridge } from '../annotation/SubtaskBridge';
 import { AnnotationPanel } from '../annotation/AnnotationPanel';
 import { Login } from './Login';
 import { PlatformPages } from './platform/PlatformPages';
 import { initAuth, useAuth } from './platform/authStore';
+import { usePage } from './platform/usePage';
 import './unified.css';
 
 // 扩展 Window 类型以支持测试 API
@@ -98,6 +97,7 @@ export function AppShell() {
 
   // ── 平台守卫:未登录只显示登录页(Agent C) ──
   const { user, ready, bypass } = useAuth();
+  const [, setPlatformPage] = usePage();
   useEffect(() => { void initAuth(); }, []);
 
   const [sidebarVisible, setSidebarVisible] = useState(true);
@@ -106,8 +106,6 @@ export function AppShell() {
   const [welcomeRequest, setWelcomeRequest] = useState<ParsedSourceUrl | null>(null);
 
   // Dialog states
-  // 启动时若 URL 未指定数据源，直接弹出数据集选择框，而不是自动打开某个数据集
-  const [serverDialogOpen, setServerDialogOpen] = useState(() => !getUrlParamFromLocation());
   const [remoteDialogOpen, setRemoteDialogOpen] = useState(false);
   const [sampleDialogOpen, setSampleDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -318,14 +316,13 @@ export function AppShell() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
       <Navbar
-        onOpenServerDirectory={() => setServerDialogOpen(true)}
         onOpenDirectory={() => { if (clearBridge()) controller.openDirectory(); }}
         onOpenLocalArchive={() => { if (clearBridge()) controller.openLocalArchive(); }}
         onOpenRemoteArchive={(url) => { if (clearBridge()) handleOpenRemoteArchive(url); }}
         onOpenSample={() => { if (clearBridge()) setSampleDialogOpen(true); }}
         onOpenUrl={(raw) => { if (clearBridge()) controller.openFromUrl(raw, 'push'); }}
         onRestoreHistory={(item) => { if (clearBridge()) controller.restoreFromHistory(item); }}
-        onGoHome={() => { if (clearBridge()) controller.openFromUrl(null, 'push'); }}
+        onGoHome={() => setPlatformPage('datasets')}
         onExport={hasData ? () => setExportDialogOpen(true) : undefined}
         history={history}
         datasetName={info ? datasetName : undefined}
@@ -337,11 +334,6 @@ export function AppShell() {
         onOpenHealth={lastValidationReport ? () => setHealthDialogOpen(true) : undefined}
       />
 
-      <ServerBridge
-        open={serverDialogOpen}
-        onClose={() => setServerDialogOpen(false)}
-        onOpened={setDatasetLabel}
-      />
       <SubtaskBridge />
 
       <div className="unified-workspace flex flex-1 min-h-0 min-w-0">

@@ -1,10 +1,20 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLeRobotData, useLeRobotPlayback, useLeRobotSelection } from '../../react/contexts/LeRobotContext';
 import { getVisualFeatureNames } from '@/core';
+import { ApiError, DICT_KINDS, fetchBoard, fetchDict, fetchStatus, postDictWord, postStatus, type DictKind, type EpisodeStatus, type StatusRecord, type UserInfo } from './platformApi';
+import { useAuth } from '../app/platform/authStore';
+
+export type { DictKind, EpisodeStatus, StatusRecord, UserInfo } from './platformApi';
 
 export type Point = { frame: number; cx: number; cy: number };
 export type Box = { id: number | null; x: number; y: number; width: number; height: number; label: string; keypoints: Point[]; camera?: string; frame_boxes?: { frame: number; x: number; y: number; w: number; h: number }[]; mask_key?: string };
-export type Segment = { start_frame: number; end_frame: number; text: string; bboxes: Box[] };
+// 片段扩展字段(契约 0.3):四项结构化标注 + 问题标记,由 bridge 透传合并落盘
+export type SegmentProblem = { reason: string; by: string; at: string; fixed_at?: string | null };
+export type Segment = { start_frame: number; end_frame: number; text: string; bboxes: Box[]; skill?: string; object?: string; target?: string; adverb?: string; problem?: SegmentProblem | null };
+// 四项齐全时 text 由它们自动拼句,保持旧的纯文本读取方兼容
+export function composeSegmentText(s: { skill?: string; object?: string; target?: string; adverb?: string }) {
+  return [s.skill, s.object, s.target, s.adverb].map(v => (v ?? '').trim()).filter(Boolean).join(' ');
+}
 export type SamPoint = { frame: number; x: number; y: number; positive: boolean };
 export type SamState = { mode: boolean; busy: boolean; status: string; objectId: number | null; promptFrame: number | null; propagated: boolean; progress: { done: number; total: number } | null; points: SamPoint[]; bbox: { x: number; y: number; w: number; h: number } | null; camera: string | null };
 type Context = {
@@ -17,6 +27,12 @@ type Context = {
   samPoint: (x: number, y: number, positive: boolean) => Promise<void>;
   samPropagate: () => Promise<void>; samDiscard: () => Promise<void>;
   samMaskUrl: (frame: number) => string | null;
+  // ── 平台化:登录用户 / episode 状态机 / 数据字典 / 问题标注 ──
+  user: UserInfo | null; platformReady: boolean; readOnly: boolean; canReview: boolean;
+  status: StatusRecord; setStatus: (next: EpisodeStatus, reason?: string) => Promise<void>;
+  statusBoard: Record<number, EpisodeStatus>;
+  dict: Record<DictKind, string[]>; addDictWord: (kind: DictKind, word: string) => void;
+  markProblem: (index: number, reason: string) => void; fixProblem: (index: number) => void;
 };
 type RangeContext = { segments: Segment[]; selected: number; active: boolean };
 const AnnotationRangesContext = createContext<RangeContext | null>(null);
@@ -44,6 +60,55 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
   const [saving, setSaving] = useState(false);
   const [track, setTrack] = useState(false);
   const [boxLabel, setBoxLabel] = useState('目标');
+  // ── 平台化状态:与登录守卫共享用户状态,登录/登出后无需刷新即可生效 ──
+  const {user, ready: authReady, bypass} = useAuth();
+  const platformReady = authReady && !bypass;
+  const [statusRec, setStatusRec] = useState<StatusRecord>({status: 'untagged'});
+  const [statusBoard, setStatusBoard] = useState<Record<number, EpisodeStatus>>({});
+  const [dict, setDict] = useState<Record<DictKind, string[]>>({skill: [], object: [], target: [], adverb: []});
+  // 审核员全程只读;标注员在「已通过」后不可再改(审核员可打回解锁)
+  const readOnly = user?.role === 'reviewer' || (user?.role === 'annotator' && statusRec.status === 'approved');
+  const canReview = user?.role === 'reviewer' || user?.role === 'admin';
+  // 当前 episode 状态:随 episode 加载重新拉取,失败退回 untagged(本地模式)
+  useEffect(() => {
+    setStatusRec({status: 'untagged'});
+    if (!dataset || episode === null) return;
+    let dead = false;
+    fetchStatus(dataset, episode).then(r => { if (!dead) setStatusRec(r); }).catch(() => {});
+    return () => { dead = true; };
+  }, [dataset, episode]);
+  // 数据集级状态看板(episode 侧栏状态点)
+  const refreshBoard = useCallback(() => {
+    if (!dataset) { setStatusBoard({}); return; }
+    fetchBoard(dataset).then(m => setStatusBoard(m)).catch(() => {});
+  }, [dataset]);
+  useEffect(() => { setStatusBoard({}); refreshBoard(); }, [refreshBoard]);
+  // 四类字典;后端未部署时保留本地累积(从输入新词补充)
+  useEffect(() => {
+    let dead = false;
+    DICT_KINDS.forEach(kind => {
+      fetchDict(kind).then(words => { if (!dead) setDict(d => ({...d, [kind]: words})); }).catch(() => {});
+    });
+    return () => { dead = true; };
+  }, [dataset]);
+  const setStatus = async (next: EpisodeStatus, reason?: string) => {
+    if (!dataset || episode === null) return;
+    const prev = statusRec;
+    setStatusRec({...statusRec, status: next, reject_reason: next === 'rejected' ? (reason ?? '') : null, reviewer: next === 'approved' || next === 'rejected' ? (user?.username ?? null) : statusRec.reviewer});
+    try {
+      setStatusRec(await postStatus(dataset, episode, next, reason));
+      refreshBoard();
+    } catch (e) {
+      // 404/网络错误 = 后端未部署,保留本地状态;其余(400/403/409)回滚并提示
+      if (e instanceof ApiError && e.status >= 400 && e.status !== 404) { setStatusRec(prev); setError(e.message); }
+    }
+  };
+  const addDictWord = (kind: DictKind, word: string) => {
+    const w = word.trim();
+    if (!w) return;
+    setDict(d => (d[kind].includes(w) ? d : {...d, [kind]: [...d[kind], w]}));
+    void postDictWord(kind, w).catch(() => {});
+  };
   // ── SAM 智能分割状态 ──
   const [samMode, setSamModeState] = useState(false);
   const [samBusy, setSamBusy] = useState(false);
@@ -116,7 +181,16 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
     if (next >= 0 && next !== selected) { select(next); selectBox(-1); setTrack(false); }
   }, [currentFrameIndex, episode, selectedEpisodeIndex, selected, segments]);
   useEffect(() => { const fn = (e: BeforeUnloadEvent) => {if (dirty) e.preventDefault();}; window.addEventListener('beforeunload', fn); return () => window.removeEventListener('beforeunload', fn);}, [dirty]);
-  const update = (items: Segment[]) => { if (saving) {setError('正在保存，请稍候'); return;} if (episode !== selectedEpisodeIndex) {setError('请先保存上一片段的标注'); return;} setSegments(items); setError(''); setDirty(true); };
+  const update = (items: Segment[]) => { if (readOnly) {setError('审核模式为只读，不能修改标注'); return;} if (saving) {setError('正在保存，请稍候'); return;} if (episode !== selectedEpisodeIndex) {setError('请先保存上一片段的标注'); return;} setSegments(items); setError(''); setDirty(true); };
+  // 问题标注:标记无效片段(红色删除线),修正后记录 fixed_at
+  const markProblem = (index: number, reason: string) => {
+    if (!segments[index]) return;
+    update(segments.map((it, i) => (i === index ? {...it, problem: {reason, by: user?.username ?? '本地', at: new Date().toISOString(), fixed_at: null}} : it)));
+  };
+  const fixProblem = (index: number) => {
+    if (!segments[index]?.problem) return;
+    update(segments.map((it, i) => (i === index && it.problem ? {...it, problem: {...it.problem, fixed_at: new Date().toISOString()}} : it)));
+  };
   const save = async () => {
     if (!dataset || episode === null || !dirty || saving) return;
     setSaving(true); setError('');
@@ -131,11 +205,42 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && dataset) {
         e.preventDefault(); e.stopPropagation(); void save();
-      } else if (e.key === 'Escape' && track) setTrack(false);
+        return;
+      }
+      if (e.key === 'Escape' && track) { setTrack(false); return; }
+      // Q=片段起点 R=片段终点 Enter=新建片段(对齐 Embodiflow 快捷键)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && t.closest('input, textarea, select, button, a, [role="button"], [role="dialog"], [contenteditable="true"]')) return;
+      if (!dataset || episode === null || episode !== selectedEpisodeIndex || readOnly) return;
+      const key = e.key.toLowerCase();
+      if (key !== 'q' && key !== 'r' && e.key !== 'Enter') return;
+      e.preventDefault(); e.stopPropagation();
+      const f = currentFrameIndex;
+      if (key === 'q' || key === 'r') {
+        const seg = segments[selected];
+        if (!seg) { setError('请先选择片段，再设定起点/终点'); return; }
+        setPlaying(false);
+        const prev = segments[selected - 1], next = segments[selected + 1];
+        const ns = key === 'q' ? Math.max(prev ? prev.end_frame + 1 : 0, Math.min(f, seg.end_frame)) : seg.start_frame;
+        const ne = key === 'r' ? Math.min(next ? next.start_frame - 1 : length - 1, Math.max(f, seg.start_frame)) : seg.end_frame;
+        if (ne < ns) return;
+        update(segments.map((it, i) => (i === selected ? {...it, start_frame: ns, end_frame: ne} : it)));
+        return;
+      }
+      // Enter:当前帧在已有片段内则选中它,否则新建零长度片段(再用 Q/R 调整起止)
+      setPlaying(false);
+      const inside = segments.findIndex(s => f >= s.start_frame && f <= s.end_frame);
+      if (inside >= 0) { select(inside); selectBox(-1); setTrack(false); return; }
+      const seg: Segment = {start_frame: f, end_frame: f, text: '', bboxes: []};
+      const next = [...segments, seg].sort((a, b) => a.start_frame - b.start_frame);
+      update(next);
+      select(next.indexOf(seg));
+      selectBox(-1);
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [dataset, episode, revision, segments, dirty, saving, track]);
+  }, [dataset, episode, revision, segments, dirty, saving, track, selected, currentFrameIndex, length, readOnly, selectedEpisodeIndex]);
   // ── SAM 动作 ──
   const setSamMode = (b: boolean) => {
     if (samBusy) return;
@@ -212,7 +317,7 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
     samReset(); setSamStatus('已放弃该对象,可重新点选');
   };
   const sam: SamState = {mode: samMode, busy: samBusy, status: samStatus, objectId: samObjectId, promptFrame: samPromptFrame, propagated: samPropagated, progress: samProgress, points: samPoints, bbox: samBBox, camera: samCam};
-  const value = useMemo(() => ({dataset,setDataset,episode,currentEpisode:selectedEpisodeIndex,frame:currentFrameIndex,length,segments,selected,select,selectedBox,selectBox,boxLabel,setBoxLabel,dirty,error,saving,track,setTrack,update,save,pause:()=>setPlaying(false),jump:(frame:number)=>{setPlaying(false);setFrameIndex(frame);},cameras,sam,setSamMode,setSamCamera,samPoint,samPropagate,samDiscard,samMaskUrl,showMasks,setShowMasks}), [dataset,episode,selectedEpisodeIndex,currentFrameIndex,length,segments,selected,selectedBox,boxLabel,dirty,error,saving,track,revision,setFrameIndex,setPlaying,samMode,samBusy,samStatus,samObjectId,samPromptFrame,samPropagated,samProgress,samPoints,samBBox,samCam,cameras,samMaskVersion,showMasks]);
+  const value = useMemo(() => ({dataset,setDataset,episode,currentEpisode:selectedEpisodeIndex,frame:currentFrameIndex,length,segments,selected,select,selectedBox,selectBox,boxLabel,setBoxLabel,dirty,error,saving,track,setTrack,update,save,pause:()=>setPlaying(false),jump:(frame:number)=>{setPlaying(false);setFrameIndex(frame);},cameras,sam,setSamMode,setSamCamera,samPoint,samPropagate,samDiscard,samMaskUrl,showMasks,setShowMasks,user,platformReady,readOnly,canReview,status:statusRec,setStatus,statusBoard,dict,addDictWord,markProblem,fixProblem}), [dataset,episode,selectedEpisodeIndex,currentFrameIndex,length,segments,selected,selectedBox,boxLabel,dirty,error,saving,track,revision,setFrameIndex,setPlaying,samMode,samBusy,samStatus,samObjectId,samPromptFrame,samPropagated,samProgress,samPoints,samBBox,samCam,cameras,samMaskVersion,showMasks,user,platformReady,readOnly,canReview,statusRec,statusBoard,dict]);
   const ranges = useMemo(() => ({segments, selected, active: !!dataset && episode !== null && episode === selectedEpisodeIndex}), [segments,selected,dataset,episode,selectedEpisodeIndex]);
   return <AnnotationRangesContext.Provider value={ranges}><AnnotationContext.Provider value={value}>{children}</AnnotationContext.Provider></AnnotationRangesContext.Provider>;
 }

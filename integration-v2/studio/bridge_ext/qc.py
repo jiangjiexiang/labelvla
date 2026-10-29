@@ -3,7 +3,7 @@
 规则(设计文档第 5 节):
   no_box            片段存在但 bboxes 为空
   missing_frame_box 片段范围内某帧没有任何框覆盖(frame_boxes/interpolated_centers/keypoints)
-  out_of_bounds     框超出相机画面(info.json features[ cam ].shape = [h, w, c])
+  out_of_bounds     框超出相机画面(info.json features[cam].shape = [h, w, c])
   area_jump         相邻帧框面积变化 > 3 倍
   mask_missing      bbox 有 mask_key 且有框覆盖的帧,磁盘 mask 文件缺失
 每次全量重扫一个数据集:先清旧报告再写入,并更新 qc_scans(dataset 级扫描台账)。

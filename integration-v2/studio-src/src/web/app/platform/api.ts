@@ -42,8 +42,8 @@ export interface User {
 export interface LoginRecord { login_at: string; logout_at?: string | null; ip?: string; device?: string }
 export type EpisodeStatus = 'untagged' | 'labeling' | 'review' | 'approved' | 'rejected';
 export interface DatasetRow {
-  path: string; name: string; episodes: number; size_gb: number; cameras: number; hours: number;
-  counts: Record<EpisodeStatus, number>; qc: { pass: number; fail: number }; updated_at?: string;
+  path: string; name: string; episodes: number; size_gb: number | null; cameras: number; hours: number;
+  counts: Record<EpisodeStatus, number>; qc: { pass: number | null; fail: number }; updated_at?: string;
   deleted?: boolean;
 }
 export interface DashboardData {
@@ -84,14 +84,26 @@ export const api = {
   deleteUser: (id: number) => del<{ ok: boolean }>(`/api/bridge/users/${id}`),
   userLogins: (id: number) => get<LoginRecord[]>(`/api/bridge/users/${id}/logins`),
   // ledger
-  datasets: (trash = false) => get<DatasetRow[]>(`/api/bridge/admin/datasets${trash ? '?trash=1' : ''}`),
+  datasets: async (trash = false): Promise<DatasetRow[]> => {
+    const r = await get<{ datasets?: DatasetRow[]; trash?: (Partial<DatasetRow> & Pick<DatasetRow, 'path' | 'name'>)[] }>(`/api/bridge/admin/datasets${trash ? '?trash=1' : ''}`);
+    if (!trash) return r.datasets ?? [];
+    return (r.trash ?? []).map(row => ({
+      episodes: 0,
+      size_gb: 0,
+      cameras: 0,
+      hours: 0,
+      counts: {untagged: 0, labeling: 0, review: 0, approved: 0, rejected: 0},
+      qc: {pass: 0, fail: 0},
+      ...row,
+    }));
+  },
   rescan: () => post<{ ok: boolean }>('/api/bridge/admin/rescan'),
-  deleteDataset: (path: string) => post<{ ok: boolean }>('/api/bridge/datasets/delete', { path }),
-  restoreDataset: (path: string) => post<{ ok: boolean }>('/api/bridge/datasets/restore', { path }),
+  deleteDataset: (path: string) => post<{ ok: boolean }>('/api/bridge/admin/datasets/delete', { path }),
+  restoreDataset: (name: string) => post<{ ok: boolean }>('/api/bridge/admin/datasets/restore', { name }),
   // dashboard
   dashboard: () => get<DashboardData>('/api/bridge/dashboard'),
   // qc
-  qcScan: (dataset: string) => post<{ ok: boolean; task?: string }>('/api/bridge/qc/scan', { dataset }),
+  qcScan: (dataset: string) => post<{ ok: boolean; scanning: boolean }>('/api/bridge/qc/scan', { dataset }),
   qc: (dataset: string, episode?: number) =>
-    get<{ items: QcItem[] }>(`/api/bridge/qc?dataset=${encodeURIComponent(dataset)}${episode !== undefined ? `&episode=${episode}` : ''}`),
+    get<{ issues: QcItem[]; scanning: boolean; scanned_at: string | null }>(`/api/bridge/qc?dataset=${encodeURIComponent(dataset)}${episode !== undefined ? `&episode=${episode}` : ''}`),
 };

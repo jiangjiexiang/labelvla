@@ -2,7 +2,7 @@
 
 口径说明:
 - totals:台账行求和;annotations=片段总数,annotation_hours=片段帧跨度折小时
-- status_dist:dataset_status 全库分布,untagged=总集数-已有状态记录(非 untagged)数
+- status_dist:直接求和台账行 counts(与台账页口径一致;有标注无状态记录的 episode 计 labeling)
 - quality:valid=无未修正问题的片段数;invalid=未修正问题片段数(segment 扩展字段 problem);
   error=qc_reports 中 severity=error 的行数;pass_rate=valid/annotations;
   fix_rate=已修正问题/问题总数
@@ -44,15 +44,16 @@ def dashboard(request: Request):
     invalid = problems - problems_fixed
 
     status_dist = {s: 0 for s in ('untagged', 'labeling', 'review', 'approved', 'rejected')}
+    for row in rows:
+        for s, c in row['counts'].items():
+            status_dist[s] = status_dist.get(s, 0) + c
+
     qc_fail_episodes = 0
     qc_scanned = 0
     qc_scan_days = {}
     qc_error_days = {}
     try:
         with db_session() as db:
-            for r in db.execute('SELECT status, COUNT(*) c FROM dataset_status GROUP BY status'):
-                if r['status'] in status_dist:
-                    status_dist[r['status']] = r['c']
             qc_fail_episodes = db.execute(
                 'SELECT COUNT(*) c FROM (SELECT DISTINCT dataset, episode FROM qc_reports)').fetchone()['c']
             err_rows = db.execute(
@@ -70,8 +71,6 @@ def dashboard(request: Request):
                 pass
     except Exception:
         pass
-    tracked = sum(c for s, c in status_dist.items() if s != 'untagged')
-    status_dist['untagged'] = max(0, total_episodes - tracked)
 
     valid = max(0, annotations - invalid)
     quality = {

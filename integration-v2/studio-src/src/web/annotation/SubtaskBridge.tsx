@@ -16,17 +16,22 @@ function signature(segments: readonly { startFrame: number; endFrame: number; la
   return segments.map((s) => `${s.startFrame}:${s.endFrame}:${s.label}`).join('|');
 }
 
-function pickBoxes(native: { startFrame: number; endFrame: number }, source: Segment[], index: number) {
+function findCandidate(native: { startFrame: number; endFrame: number }, source: Segment[], index: number) {
   const exact = source.find(
     (s) => s.start_frame === native.startFrame && s.end_frame === native.endFrame,
   );
-  const candidate =
+  return (
     exact ??
     (source[index] &&
     source[index].start_frame <= native.endFrame &&
     source[index].end_frame >= native.startFrame
       ? source[index]
-      : undefined);
+      : undefined)
+  );
+}
+
+function pickBoxes(native: { startFrame: number; endFrame: number }, source: Segment[], index: number) {
+  const candidate = findCandidate(native, source, index);
   if (!candidate) return [];
   return candidate.bboxes.map((box) => ({
     ...box,
@@ -75,19 +80,26 @@ export function SubtaskBridge() {
 
   // native -> sidecar (declared before push so a user edit is not overwritten)
   useEffect(() => {
-    if (!annotation || !active || !canAnnotate || annotation.saving) return;
+    if (!annotation || !active || !canAnnotate || annotation.saving || annotation.readOnly) return;
     if (!nativeReadyRef.current) return;
     if (nativeSig === sidecarSig) return;
     if (nativeSig === suppressPushRef.current) {
       suppressPushRef.current = null;
       return;
     }
-    const merged: Segment[] = currentSegments.map((segment, index) => ({
-      start_frame: segment.startFrame,
-      end_frame: segment.endFrame,
-      text: segment.label === EMPTY_LABEL ? '' : segment.label,
-      bboxes: pickBoxes(segment, sidecar, index),
-    }));
+    const merged: Segment[] = currentSegments.map((segment, index) => {
+      const candidate = findCandidate(segment, sidecar, index);
+      return {
+        start_frame: segment.startFrame,
+        end_frame: segment.endFrame,
+        text: segment.label === EMPTY_LABEL ? '' : segment.label,
+        bboxes: pickBoxes(segment, sidecar, index),
+        // 扩展字段(四项结构化标注/问题标记)随候选片段透传,避免轨道编辑时丢失
+        ...(candidate
+          ? {skill: candidate.skill, object: candidate.object, target: candidate.target, adverb: candidate.adverb, problem: candidate.problem}
+          : {}),
+      };
+    });
     suppressPushRef.current = nativeSig;
     annotation.update(merged);
   }, [annotation, active, canAnnotate, currentSegments, nativeSig, sidecar, sidecarSig]);

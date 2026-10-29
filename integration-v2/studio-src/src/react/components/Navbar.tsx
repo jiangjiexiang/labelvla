@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { Button } from '@/ui';
 import {
-  Server,
   PanelLeftClose,
   PanelRightClose,
   PanelBottomClose,
@@ -15,7 +14,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageToggle } from './LanguageToggle';
-import { GitHubIcon } from './icons/GitHubIcon';
 import { Separator } from '@/ui';
 import { ExportButton } from './ExportButton';
 import { cn } from '@/ui';
@@ -30,7 +28,6 @@ import type { ValidationReport } from '@/core';
 
 interface NavbarProps {
   onOpenDirectory?: () => void;
-  onOpenServerDirectory?: () => void;
   onOpenLocalArchive?: () => void;
   onOpenRemoteArchive?: (url?: string) => void;
   onOpenSample?: () => void;
@@ -49,7 +46,6 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  onOpenServerDirectory,
   onGoHome,
   onExport,
   datasetName,
@@ -82,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     return activeTask && activeTask.phase !== 'error' && !percent;
   }, [activeTask, percent]);
 
-  const displayName = datasetName || t('common.companyName');
+  const displayName = datasetName || 'LabelVLA 数据平台';
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background text-foreground">
@@ -106,17 +102,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <TooltipContent side="bottom">{t('navbar.goHome')}</TooltipContent>
             </Tooltip>
           )}
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-2 text-xs font-medium text-muted-foreground hover:text-foreground"
-            onClick={onOpenServerDirectory}
-            disabled={!onOpenServerDirectory}
-          >
-            <Server className="h-4 w-4" />
-            <span className="hidden sm:inline">服务器数据集</span>
-          </Button>
 
           {onExport && <ExportButton onClick={onExport} />}
 
@@ -157,7 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Center: Title & Logo */}
+        {/* Center: Title */}
         <div
           className="flex min-w-0 items-center justify-center gap-2 sm:max-w-[40vw]"
           role={isLoading ? 'status' : undefined}
@@ -168,8 +153,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="h-4 w-4 text-primary animate-spin motion-reduce:animate-none"
               aria-hidden
             />
-          ) : !datasetName ? (
-            <img src="logo.svg" alt="LeRobot Studio Logo" className="h-5 w-5 opacity-90" />
           ) : null}
           <span
             data-testid="lerobot-navbar-title"
@@ -240,28 +223,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </>
           )}
 
-          {/* GitHub, Theme & Language */}
+          {/* Theme & Language */}
           <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hidden h-9 w-9 text-muted-foreground hover:text-foreground sm:inline-flex"
-                  asChild
-                >
-                  <a
-                    href={t('common.githubUrl')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={t('navbar.github')}
-                  >
-                    <GitHubIcon className="h-4 w-4" />
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('navbar.github')}</TooltipContent>
-            </Tooltip>
             <LanguageToggle />
             <ThemeToggle />
           </div>

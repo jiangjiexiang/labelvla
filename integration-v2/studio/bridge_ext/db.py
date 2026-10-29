@@ -91,10 +91,10 @@ def hash_password(password: str, salt: str | None = None) -> str:
 
 def verify_password(password: str, stored: str) -> bool:
     try:
-        salt, _ = stored.split('$', 1)
+        salt, digest = stored.split('$', 1)
     except ValueError:
         return False
-    return secrets.compare_digest(hashlib.sha256(password, salt), stored)
+    return secrets.compare_digest(hashlib.sha256((salt + password).encode()).hexdigest(), digest)
 
 
 def init_db():

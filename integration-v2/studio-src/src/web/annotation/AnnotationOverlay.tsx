@@ -47,9 +47,10 @@ export function AnnotationOverlay({width,height,featureKey,interactive,videoRef,
     return ()=>{v.cancelVideoFrameCallback?.(handle);};
   },[videoRef,fps]);
   if(!a || !a.dataset || a.currentEpisode!==a.episode || a.episode===null) return null;
+  const readOnly=a.readOnly;
   const drawFrame=videoFrame??a.frame;
   const seg=a.segments[a.selected];
-  const inside=interactive && !!seg && a.frame>=seg.start_frame && a.frame<=seg.end_frame;
+  const inside=interactive && !readOnly && !!seg && a.frame>=seg.start_frame && a.frame<=seg.end_frame;
   const defaultCam=a.cameras[0];
   // 只画属于本相机的框;老数据没有 camera 字段,视为第一个相机
   const ownBox=(b:Box)=>(b.camera ?? defaultCam)===featureKey;
@@ -81,7 +82,7 @@ export function AnnotationOverlay({width,height,featureKey,interactive,videoRef,
     {maskUrl && <image key={maskUrl} href={maskUrl} x={0} y={0} width={width} height={height} opacity={0.55} pointerEvents="none" filter="url(#samTint)"/>}
     {interactive && a.sam.bbox && !a.sam.propagated && a.frame===a.sam.promptFrame && <rect x={a.sam.bbox.x} y={a.sam.bbox.y} width={a.sam.bbox.w} height={a.sam.bbox.h} fill="none" stroke="#3aa7ff" strokeWidth={3} strokeDasharray="8 5" vectorEffect="non-scaling-stroke" pointerEvents="none"/>}
     {interactive && a.sam.points.filter(p=>p.frame===drawFrame).map((p,i)=>{const r=Math.max(4,width/100);return <circle key={i} cx={p.x} cy={p.y} r={r} fill={p.positive?'#4ade80':'#f87171'} stroke="#111" strokeWidth={1.5} vectorEffect="non-scaling-stroke" pointerEvents="none"/>;})}
-    {interactive && <g pointerEvents="none" className="text-primary">
+    {interactive && !readOnly && <g pointerEvents="none" className="text-primary">
       <rect x={8} y={8} width={bannerWidth} height={bannerHeight} rx={5} fill="currentColor" opacity={0.9}/>
       <text x={8+fontSize*0.6} y={8+bannerHeight/2+fontSize*0.35} fontSize={fontSize} fill="var(--primary-foreground, #fff)">{bannerText}</text>
     </g>}

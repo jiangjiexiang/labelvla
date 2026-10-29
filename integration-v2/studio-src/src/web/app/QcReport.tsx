@@ -7,7 +7,7 @@ import { api, type DatasetRow, type QcItem } from './platform/api';
 import { usePage } from './platform/usePage';
 
 const RULE_LABEL: Record<string, string> = {
-  no_boxes: '片段无框', missing_frame: '缺框帧', out_of_bounds: '框出界',
+  no_box: '片段无框', missing_frame_box: '缺框帧', out_of_bounds: '框出界',
   area_jump: '面积突变', mask_missing: '轮廓缺帧',
 };
 
@@ -36,7 +36,7 @@ export function QcReport() {
     setError('');
     try {
       const r = await api.qc(ds);
-      setItems(r.items);
+      setItems(r.issues);
     } catch (e) { setItems([]); setError(e instanceof Error ? e.message : String(e)); }
   }, []);
   useEffect(() => { void load(dataset); }, [load, dataset]);
@@ -47,11 +47,12 @@ export function QcReport() {
     setError('');
     try {
       await api.qcScan(dataset);
-      // 扫描是后台任务,简单轮询几次
+      // 扫描是后台任务;扫描标记消失后立即停止轮询
       for (let i = 0; i < 20; i++) {
         await new Promise((r) => setTimeout(r, 3000));
         const r = await api.qc(dataset);
-        setItems(r.items);
+        setItems(r.issues);
+        if (!r.scanning) break;
       }
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
@@ -75,7 +76,7 @@ export function QcReport() {
       }
       await selectEpisode(it.episode);
       setPage(null);
-      if (it.frame !== null) {
+      if (it.frame !== null && it.frame >= 0) {
         window.setTimeout(() => annotation?.jump(it.frame ?? 0), 800);
       }
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
@@ -115,7 +116,7 @@ export function QcReport() {
               <Badge variant="secondary" className={it.severity === 'error' ? 'text-red-600' : 'text-amber-600'}>
                 {RULE_LABEL[it.rule] ?? it.rule}
               </Badge>
-              {it.frame !== null && <span className="tabular-nums text-muted-foreground">帧 {it.frame}</span>}
+              {it.frame !== null && it.frame >= 0 && <span className="tabular-nums text-muted-foreground">帧 {it.frame}</span>}
               <span className="truncate text-muted-foreground">{it.detail}</span>
               <span className="ml-auto shrink-0 text-primary">{jumping === `${it.episode}:${it.frame}` ? '跳转中…' : '查看 →'}</span>
             </button>

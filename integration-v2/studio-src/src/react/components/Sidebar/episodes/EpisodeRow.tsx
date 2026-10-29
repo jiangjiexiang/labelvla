@@ -6,6 +6,7 @@ import { Badge } from '@/ui';
 import { Button } from '@/ui';
 import { cn } from '@/ui';
 import { isEpisodeRowActivationKey } from '@/core';
+import { EpisodeStatusDot } from '../../../../web/annotation/EpisodeStatusDot';
 
 interface EpisodeRowProps {
   episode: EpisodeMetadata;
@@ -109,19 +110,22 @@ export const EpisodeRow: React.FC<EpisodeRowProps> = ({
         )}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="mb-1 flex min-w-0 items-center justify-between gap-2 overflow-hidden">
-            <Badge
-              variant={selectedActive ? 'default' : 'outline'}
-              className={cn(
-                'h-4 shrink-0 px-1.5 font-mono text-[10px] font-medium transition-colors',
-                selectedActive
-                  ? 'border-transparent bg-primary text-primary-foreground'
-                  : checkedOnly
-                    ? 'border-border/60 bg-muted text-foreground/80'
-                    : 'opacity-70',
-              )}
-            >
-              # {episode.episode_index}
-            </Badge>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Badge
+                variant={selectedActive ? 'default' : 'outline'}
+                className={cn(
+                  'h-4 shrink-0 px-1.5 font-mono text-[10px] font-medium transition-colors',
+                  selectedActive
+                    ? 'border-transparent bg-primary text-primary-foreground'
+                    : checkedOnly
+                      ? 'border-border/60 bg-muted text-foreground/80'
+                      : 'opacity-70',
+                )}
+              >
+                # {episode.episode_index}
+              </Badge>
+              <EpisodeStatusDot episode={episode.episode_index} />
+            </span>
             <span
               className={cn(
                 'min-w-0 truncate font-mono text-[11px] transition-colors',

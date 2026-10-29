@@ -1,7 +1,7 @@
 import os
 import re
 from pathlib import Path
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.routing import Mount
@@ -106,6 +106,9 @@ def bridge_read_segments(dataset: str, episode: int):
         if store.file_path.exists():
             raw = json.loads(store.file_path.read_text(encoding='utf8'))
             for s_item, s_raw in zip(segments, raw.get('segments', [])):
+                for extra in ('skill', 'object', 'target', 'adverb', 'problem'):
+                    if s_raw.get(extra):
+                        s_item[extra] = s_raw[extra]
                 for b_item, b_raw in zip(s_item.get('bboxes', []),
                                          s_raw.get('bboxes', [])):
                     for extra in ('camera', 'frame_boxes', 'mask_key'):
@@ -134,6 +137,10 @@ def bridge_write_segments(dataset: str, episode: int, payload: dict):
         raw_segments = payload.get('segments', [])
         for si, segment in enumerate(segments):
             item = asdict(segment)
+            if si < len(raw_segments):
+                for extra in ('skill', 'object', 'target', 'adverb', 'problem'):
+                    if raw_segments[si].get(extra):
+                        item[extra] = raw_segments[si][extra]
             raw_bboxes = raw_segments[si].get('bboxes', []) if si < len(raw_segments) else []
             for bi, (bbox, item_bbox) in enumerate(zip(segment.bboxes, item['bboxes'])):
                 # dataclass 序列化会丢扩展字段,从原始提交里带回来
@@ -434,14 +441,21 @@ def bridge_mask_file(dataset: str, episode: int, key: str, frame: int):
 
 # ── 平台化扩展注册槽(Wave 0):各 bridge_ext 模块在此 register(app) ──
 from bridge_ext import auth as _ext_auth, users as _ext_users
+from bridge_ext import ledger as _ext_ledger, status as _ext_status, \
+    dictionary as _ext_dict, qc as _ext_qc, dashboard as _ext_dash
 _ext_auth.register(app)
 _ext_users.register(app)
+for _m in (_ext_ledger, _ext_status, _ext_dict, _ext_qc, _ext_dash):
+    _m.register(app)
 
 
-# 必须最后挂载：/studio 下的 StaticFiles 会匹配所有未命中 API 的请求。
-@app.get('/')
-def home():
-    return RedirectResponse('/studio/')
+# 必须最后挂载：根路径 StaticFiles 会匹配所有未命中 API 的请求。
+@app.get('/studio')
+@app.get('/studio/')
+@app.get('/studio/{legacy_path:path}')
+def legacy_studio(request: Request, legacy_path: str = ''):
+    query = f'?{request.url.query}' if request.url.query else ''
+    return RedirectResponse(f'/{query}', status_code=307)
 
 
-app.mount('/studio', StaticFiles(directory='/integration/studio', html=True), name='studio')
+app.mount('/', StaticFiles(directory='/integration/studio', html=True), name='studio')

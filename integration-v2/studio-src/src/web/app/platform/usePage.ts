@@ -1,31 +1,56 @@
-/** 平台页路由:URL query 里的 page 参数(?page=dashboard|datasets|users|qc)。 */
+/** 平台页状态:页面选择不写入地址栏,地址始终保持站点根路径。 */
 import { useCallback, useSyncExternalStore } from 'react';
 
 export type PlatformPage = 'dashboard' | 'datasets' | 'users' | 'qc' | null;
 
-function readPage(): PlatformPage {
-  const v = new URLSearchParams(window.location.search).get('page');
-  return v === 'dashboard' || v === 'datasets' || v === 'users' || v === 'qc' ? v : null;
+const STORAGE_KEY = 'labelvla.platform-page';
+
+function parsePage(value: string | null): PlatformPage {
+  return value === 'dashboard' || value === 'datasets' || value === 'users' || value === 'qc'
+    ? value
+    : null;
 }
+
+function stripPageParam() {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('page')) return;
+  params.delete('page');
+  const url = `${window.location.pathname}${params.size ? `?${params}` : ''}`;
+  window.history.replaceState(null, '', url);
+}
+
+function readInitialPage(): PlatformPage {
+  if (typeof window === 'undefined') return null;
+  const fromUrl = parsePage(new URLSearchParams(window.location.search).get('page'));
+  stripPageParam();
+  if (fromUrl) {
+    try { window.sessionStorage.setItem(STORAGE_KEY, fromUrl); } catch { /* 忽略存储限制 */ }
+    return fromUrl;
+  }
+  try { return parsePage(window.sessionStorage.getItem(STORAGE_KEY)); } catch { return null; }
+}
+
+let currentPage = readInitialPage();
+const listeners = new Set<() => void>();
 
 function subscribe(cb: () => void) {
-  window.addEventListener('popstate', cb);
-  window.addEventListener('studio:navigate', cb);
-  return () => {
-    window.removeEventListener('popstate', cb);
-    window.removeEventListener('studio:navigate', cb);
-  };
+  listeners.add(cb);
+  return () => { listeners.delete(cb); };
 }
 
+const getSnapshot = () => currentPage;
+
 export function usePage(): [PlatformPage, (p: PlatformPage) => void] {
-  const page = useSyncExternalStore(subscribe, readPage);
+  const page = useSyncExternalStore(subscribe, getSnapshot);
   const setPage = useCallback((p: PlatformPage) => {
-    const params = new URLSearchParams(window.location.search);
-    if (p) params.set('page', p);
-    else params.delete('page');
-    const url = `${window.location.pathname}${params.size ? `?${params}` : ''}`;
-    window.history.pushState(null, '', url);
-    window.dispatchEvent(new Event('studio:navigate'));
+    currentPage = p;
+    try {
+      if (p) window.sessionStorage.setItem(STORAGE_KEY, p);
+      else window.sessionStorage.removeItem(STORAGE_KEY);
+    } catch { /* 忽略存储限制 */ }
+    stripPageParam();
+    for (const listener of listeners) listener();
   }, []);
   return [page, setPage];
 }

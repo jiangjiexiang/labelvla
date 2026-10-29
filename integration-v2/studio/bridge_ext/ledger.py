@@ -4,6 +4,7 @@
 - 容量:os.scandir 累加,后台线程扫描,缓存 5 分钟,请求不阻塞
 - 台账行缓存 60 秒;POST /admin/rescan 清空缓存并后台重扫容量
 - 软删:目录移入 /data/.trash/(原名拍平 + @时间戳),标注随目录保留,可恢复
+- 状态计数:有标注文件但无 dataset_status 记录的 episode 计入 labeling(标注进度可直接用)
 """
 import json
 import os
@@ -84,8 +85,8 @@ def _ensure_sizes(paths):
     """过期或缺失的容量交给后台线程重扫;本次返回已有缓存(可为 None)。"""
     global _size_scanning
     now = time.time()
-    stale = []
     with _lock:
+        stale = []
         for p in paths:
             hit = _size_cache.get(str(p))
             if not hit or now - hit['at'] > SIZE_TTL:
@@ -93,7 +94,6 @@ def _ensure_sizes(paths):
         if stale and not _size_scanning:
             _size_scanning = True
             threading.Thread(target=_refresh_sizes, args=(stale,), daemon=True).start()
-    with _lock:
         return {str(p): (_size_cache.get(str(p)) or {}).get('bytes') for p in paths}
 
 
@@ -195,7 +195,7 @@ def scan_dataset(p: Path) -> dict:
 
 
 def _db_side(root: Path):
-    """dataset_status / qc 库侧聚合;库或表尚未就绪(A 未合并)时降级为空。"""
+    """dataset_status / qc 库侧聚合;库或表尚未就绪时降级为空。"""
     status_map, qc_fail, qc_scanned, updated = {}, {}, {}, {}
     try:
         with db_session() as db:
@@ -232,24 +232,26 @@ def get_ledger(force: bool = False) -> list:
             continue
         row['name'] = p.relative_to(root).as_posix()
         rows.append(row)
-    status_counts, qc_fail, qc_scanned, updated = _db_side(root)
+    status_map, qc_fail, qc_scanned, updated = _db_side(root)
     sizes = _ensure_sizes([Path(r['path']) for r in rows])
     for r in rows:
-        counts = status_counts.get(r['path'], {})
-        tracked = sum(c for s, c in counts.items() if s != 'untagged')
-        r['counts'] = {
-            'untagged': max(0, r['episodes'] - tracked) ,
-            'labeling': counts.get('labeling', 0),
-            'review': counts.get('review', 0),
-            'approved': counts.get('approved', 0),
-            'rejected': counts.get('rejected', 0),
-        }
+        smap = status_map.get(r['path'], {})
+        # 有标注但无状态记录的 episode 视为标注中,台账的标注进度才不虚报
+        auto = set(r['labeled_eps']) - set(smap)
+        counts = {'untagged': 0, 'labeling': 0, 'review': 0, 'approved': 0, 'rejected': 0}
+        for st in smap.values():
+            if st in ('labeling', 'review', 'approved', 'rejected'):
+                counts[st] += 1
+        counts['labeling'] += len(auto)
+        counts['untagged'] = max(0, r['episodes'] - (len(smap) - sum(
+            1 for st in smap.values() if st == 'untagged')) - len(auto))
+        r['counts'] = counts
         fail = qc_fail.get(r['path'], 0)
         scanned = qc_scanned.get(r['path'])
         r['qc'] = {'pass': (max(0, scanned[0] - fail) if scanned else None), 'fail': fail}
         size = sizes.get(r['path'])
         r['size_gb'] = round(size / 1024 ** 3, 2) if size is not None else None
-        r['updated_at'] = updated.get(r['path']) or r.pop('fs_updated_at')
+        r['updated_at'] = updated.get(r['path']) or r['fs_updated_at']
     with _lock:
         _ledger_cache['rows'] = rows
         _ledger_cache['at'] = now
@@ -320,8 +322,7 @@ def admin_delete_dataset(request: Request, payload: dict):
     p = safe_dataset(str(payload.get('path') or ''))
     rel = p.relative_to(data_root())
     name = '__'.join(rel.parts) + '@' + datetime.now().strftime('%Y%m%d%H%M%S')
-    dst = _trash_dir() / name
-    os.rename(p, dst)
+    os.rename(p, _trash_dir() / name)
     with _lock:
         _ledger_cache['rows'] = None
         _size_cache.pop(str(p), None)

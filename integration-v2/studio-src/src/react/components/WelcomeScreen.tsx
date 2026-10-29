@@ -84,11 +84,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     },
   };
 
-  const companyName = t('common.companyName');
-  const [attributionBefore, attributionAfter = ''] = t('panels.welcome.attribution', {
-    company: '\u0000',
-  }).split('\u0000');
-
   const openForm = (
     <motion.div className="space-y-6" variants={itemVariants}>
       <div className="flex items-center gap-3">
@@ -116,20 +111,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         onRestoreFromUrl={onRestoreFromUrl}
       />
 
-      <div className="text-center pt-8">
-        <p className="text-xs text-muted-foreground" data-readability>
-          {attributionBefore}
-          <a
-            href={t('common.companyWebsite')}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground transition-colors"
-          >
-            {companyName}
-          </a>
-          {attributionAfter}
-        </p>
-      </div>
     </motion.div>
   );
 
@@ -145,13 +126,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           {/* Hero Section */}
           <motion.div className="text-center mb-16 space-y-6" variants={itemVariants}>
             <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground sm:text-6xl">
-              {t('common.appName')}
+              LabelVLA 数据平台
             </h1>
             <p
               className="text-xl text-muted-foreground max-w-readable mx-auto leading-relaxed"
               data-readability
             >
-              {t('panels.welcome.step2.description')}
+              机器人数据采集、标注、审核与质检一体化平台
             </p>
           </motion.div>
 

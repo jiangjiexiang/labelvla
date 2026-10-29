@@ -432,6 +432,12 @@ def bridge_mask_file(dataset: str, episode: int, key: str, frame: int):
     return FileResponse(p, headers={'Cache-Control': 'private, max-age=3600'})
 
 
+# ── 平台化扩展注册槽(Wave 0):各 bridge_ext 模块在此 register(app) ──
+from bridge_ext import auth as _ext_auth, users as _ext_users
+_ext_auth.register(app)
+_ext_users.register(app)
+
+
 # 必须最后挂载：/studio 下的 StaticFiles 会匹配所有未命中 API 的请求。
 @app.get('/')
 def home():

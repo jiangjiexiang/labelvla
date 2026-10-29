@@ -125,6 +125,11 @@ export function AnnotationPanel() {
                       }}
                     >
                       <span className="truncate">
+                        {a.cameras.length > 1 && (
+                          <span className="text-muted-foreground">
+                            [{(box.camera ?? a.cameras[0] ?? '').replace('observation.images.', '')}]{' '}
+                          </span>
+                        )}
                         {box.label} · {Math.round(box.width)}×{Math.round(box.height)} ·{' '}
                         {box.keypoints.length} 个关键点
                       </span>
@@ -141,9 +146,17 @@ export function AnnotationPanel() {
                   </div>
                 ))}
 
+                <Button
+                  variant={a.showMasks ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => a.setShowMasks(!a.showMasks)}
+                >
+                  {a.showMasks ? '分割轮廓预览: 开' : '分割轮廓预览: 关'}
+                </Button>
+
                 {a.selectedBox >= 0 && (
-                  <div className="flex gap-1">
-                    <Button
+                  <div className="flex gap-1">                    <Button
                       variant={a.track ? 'secondary' : 'outline'}
                       size="sm"
                       className="h-7 flex-1 px-2 text-[11px]"
@@ -168,6 +181,62 @@ export function AnnotationPanel() {
                       清除轨迹
                     </Button>
                   </div>
+                )}
+              </div>
+            </>
+          )}
+          {segment && (
+            <>
+              <Separator />
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-muted-foreground">SAM 智能分割跟踪</span>
+                <Button
+                  variant={a.sam.mode ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="h-7 px-2 text-[11px]"
+                  disabled={a.sam.busy && !a.sam.mode}
+                  onClick={() => a.setSamMode(!a.sam.mode)}
+                >
+                  {a.sam.mode ? '退出 SAM 模式' : 'SAM 点选分割'}
+                </Button>
+                {a.sam.mode && (
+                  <>
+                    {a.cameras.length > 1 && (
+                      <select
+                        aria-label="SAM 相机"
+                        value={a.sam.camera ?? a.cameras[0]}
+                        disabled={a.sam.busy}
+                        onChange={(event) => a.setSamCamera(event.target.value)}
+                        className={inputClass}
+                      >
+                        {a.cameras.map((cam) => (
+                          <option key={cam} value={cam}>{cam.replace('observation.images.', '')}</option>
+                        ))}
+                      </select>
+                    )}
+                    {a.sam.status && (
+                      <p className="m-0 text-[11px] text-muted-foreground">{a.sam.status}</p>
+                    )}
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        className="h-7 flex-1 px-2 text-[11px]"
+                        disabled={a.sam.busy || a.sam.objectId === null}
+                        onClick={() => void a.samPropagate()}
+                      >
+                        {a.sam.progress ? `${a.sam.progress.done}/${a.sam.progress.total}` : '传播跟踪'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 flex-1 px-2 text-[11px]"
+                        disabled={a.sam.busy || a.sam.objectId === null}
+                        onClick={() => void a.samDiscard()}
+                      >
+                        放弃对象
+                      </Button>
+                    </div>
+                  </>
                 )}
               </div>
             </>

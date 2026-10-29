@@ -1,4 +1,5 @@
 import { AnnotationOverlay } from '../../../../web/annotation/AnnotationOverlay';
+import { useAnnotation } from '../../../../web/annotation/AnnotationContext';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +29,13 @@ const VideoPanelContent: React.FC<VideoPanelProps> = ({ params }) => {
   const { t } = useTranslation();
   const { info, dataLoader, subscribeFrameIndex } = useLeRobotData();
   const { selectedEpisodeIndex } = useLeRobotSelection();
+  const annotation = useAnnotation();
+  const annotationCamera = annotation?.sam.mode && annotation.sam.camera
+    ? annotation.sam.camera
+    : getFirstVisualFeatureName(info);
+  // 标注进行中(已加载片段)时隐藏视频调试信息弹层,避免悬停遮挡画面
+  const annotationActive = !!annotation && !!annotation.dataset
+    && annotation.episode !== null && annotation.episode === annotation.currentEpisode;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasVideo, setHasVideo] = useState(false); // 是否有可用的视频
@@ -314,7 +322,7 @@ const VideoPanelContent: React.FC<VideoPanelProps> = ({ params }) => {
 
   return (
     <div className="group relative flex h-full w-full items-center justify-center overflow-hidden bg-black">
-      <MediaDebugOverlay metadata={debugMetadata} translationPrefix="panels.video.debug" />
+      {!annotationActive && <MediaDebugOverlay metadata={debugMetadata} translationPrefix="panels.video.debug" />}
 
       {/* Video - 始终可见，无过渡效果 */}
       <video
@@ -333,7 +341,7 @@ const VideoPanelContent: React.FC<VideoPanelProps> = ({ params }) => {
         disableRemotePlayback
       />
 
-      {hasVideo && videoDimensions && featureKey === getFirstVisualFeatureName(info) && <AnnotationOverlay width={videoDimensions.width} height={videoDimensions.height} />}
+      {hasVideo && videoDimensions && <AnnotationOverlay width={videoDimensions.width} height={videoDimensions.height} featureKey={featureKey} interactive={featureKey === annotationCamera} videoRef={videoRef} getTimeOffset={() => episodeRangeRef.current?.start ?? 0} fps={info?.fps ?? 30} />}
 
       {/* 占位符 - 只在没有视频时显示 */}
       {!hasVideo && (

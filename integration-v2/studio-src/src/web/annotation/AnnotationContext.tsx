@@ -1,14 +1,22 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLeRobotData, useLeRobotPlayback, useLeRobotSelection } from '../../react/contexts/LeRobotContext';
+import { getVisualFeatureNames } from '@/core';
 
 export type Point = { frame: number; cx: number; cy: number };
-export type Box = { id: number | null; x: number; y: number; width: number; height: number; label: string; keypoints: Point[] };
+export type Box = { id: number | null; x: number; y: number; width: number; height: number; label: string; keypoints: Point[]; camera?: string; frame_boxes?: { frame: number; x: number; y: number; w: number; h: number }[]; mask_key?: string };
 export type Segment = { start_frame: number; end_frame: number; text: string; bboxes: Box[] };
+export type SamPoint = { frame: number; x: number; y: number; positive: boolean };
+export type SamState = { mode: boolean; busy: boolean; status: string; objectId: number | null; promptFrame: number | null; propagated: boolean; progress: { done: number; total: number } | null; points: SamPoint[]; bbox: { x: number; y: number; w: number; h: number } | null; camera: string | null };
 type Context = {
   dataset: string; setDataset: (path: string) => void; episode: number | null; currentEpisode: number | null; frame: number; length: number;
   segments: Segment[]; selected: number; select: (i: number) => void; selectedBox: number; selectBox: (i: number) => void;
   boxLabel: string; setBoxLabel: (s: string) => void; dirty: boolean; error: string; saving: boolean; track: boolean; setTrack: (b: boolean) => void;
+  showMasks: boolean; setShowMasks: (b: boolean) => void;
   update: (items: Segment[]) => void; save: () => Promise<void>; pause: () => void; jump: (frame: number) => void;
+  cameras: string[]; sam: SamState; setSamMode: (b: boolean) => void; setSamCamera: (c: string) => void;
+  samPoint: (x: number, y: number, positive: boolean) => Promise<void>;
+  samPropagate: () => Promise<void>; samDiscard: () => Promise<void>;
+  samMaskUrl: (frame: number) => string | null;
 };
 type RangeContext = { segments: Segment[]; selected: number; active: boolean };
 const AnnotationRangesContext = createContext<RangeContext | null>(null);
@@ -19,7 +27,8 @@ export const useAnnotation = () => useContext(AnnotationContext);
 export function AnnotationProvider({children}: {children: ReactNode}) {
   const {selectedEpisodeIndex} = useLeRobotSelection();
   const {setPlaying, setFrameIndex} = useLeRobotPlayback();
-  const {subscribeFrameIndex, getFrameIndex} = useLeRobotData();
+  const {subscribeFrameIndex, getFrameIndex, info} = useLeRobotData();
+  const cameras = useMemo(() => getVisualFeatureNames(info), [info]);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   useEffect(() => { setCurrentFrameIndex(getFrameIndex()); return subscribeFrameIndex(setCurrentFrameIndex); }, [subscribeFrameIndex, getFrameIndex]);
   const [dataset, setDatasetState] = useState('');
@@ -35,6 +44,58 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
   const [saving, setSaving] = useState(false);
   const [track, setTrack] = useState(false);
   const [boxLabel, setBoxLabel] = useState('目标');
+  // ── SAM 智能分割状态 ──
+  const [samMode, setSamModeState] = useState(false);
+  const [samBusy, setSamBusy] = useState(false);
+  const [samStatus, setSamStatus] = useState('');
+  const [samObjectId, setSamObjectId] = useState<number | null>(null);
+  const [samPromptFrame, setSamPromptFrame] = useState<number | null>(null);
+  const [samPropagated, setSamPropagated] = useState(false);
+  const [samProgress, setSamProgress] = useState<{ done: number; total: number } | null>(null);
+  const [samMaskVersion, setSamMaskVersion] = useState(0);
+  const [showMasks, setShowMasks] = useState(true);
+  const [samPoints, setSamPoints] = useState<SamPoint[]>([]);
+  const [samBBox, setSamBBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [samCameraState, setSamCameraState] = useState<string | null>(null);
+  const samCam = samCameraState ?? cameras[0] ?? null;
+  const maskCacheRef = useRef<Map<string, string>>(new Map());
+  const clearMaskCache = (oid?: number) => {
+    for (const [key, url] of maskCacheRef.current) {
+      if (oid === undefined || key.startsWith(`${oid}:`)) {
+        URL.revokeObjectURL(url);
+        maskCacheRef.current.delete(key);
+      }
+    }
+  };
+  // 传播完成后把整段 mask 预取到浏览器内存,播放时零延迟切换
+  const prefetchMasks = (oid: number, frames: number[]) => {
+    if (!dataset || episode === null) return;
+    let i = 0;
+    const worker = async () => {
+      while (i < frames.length) {
+        const f = frames[i++];
+        const key = `${oid}:${f}`;
+        if (maskCacheRef.current.has(key)) continue;
+        try {
+          const r = await fetch(`/api/bridge/sam/mask/${f}/${oid}.png?dataset=${encodeURIComponent(dataset)}&episode=${episode}&camera=${encodeURIComponent(samCam ?? '')}`);
+          if (r.ok) {
+            maskCacheRef.current.set(key, URL.createObjectURL(await r.blob()));
+            if (maskCacheRef.current.size % 25 === 0) setSamMaskVersion(v => v + 1);
+          }
+        } catch { /* 单帧失败跳过 */ }
+      }
+      setSamMaskVersion(v => v + 1);
+    };
+    void Promise.all([...Array(4)].map(() => worker()));
+  };
+  const samMaskUrl = (frame: number): string | null => {
+    if (samObjectId === null || !dataset || episode === null) return null;
+    return maskCacheRef.current.get(`${samObjectId}:${frame}`)
+      ?? `/api/bridge/sam/mask/${frame}/${samObjectId}.png?dataset=${encodeURIComponent(dataset)}&episode=${episode}&camera=${encodeURIComponent(samCam ?? '')}`;
+  };
+  const samReset = () => { setSamObjectId(null); setSamPromptFrame(null); setSamPropagated(false); setSamProgress(null); setSamPoints([]); setSamBBox(null); clearMaskCache(); };
+  const setSamCamera = (c: string) => { if (samBusy) return; setSamCameraState(c); samReset(); setSamStatus('已切换相机,请在该相机画面上重新点选目标'); };
+  useEffect(() => { setSamModeState(false); setSamBusy(false); setSamStatus(''); setSamCameraState(null); samReset(); }, [dataset, episode]);
   const setDataset = (path: string) => { if (dirty) {setError('请先保存未保存的标注'); return;} loadedRef.current = null; setDatasetState(path); setEpisode(null); setSegments([]); setError(''); };
   useEffect(() => {
     if (!dataset || selectedEpisodeIndex === null || dirty) return;
@@ -75,7 +136,83 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [dataset, episode, revision, segments, dirty, saving, track]);
-  const value = useMemo(() => ({dataset,setDataset,episode,currentEpisode:selectedEpisodeIndex,frame:currentFrameIndex,length,segments,selected,select,selectedBox,selectBox,boxLabel,setBoxLabel,dirty,error,saving,track,setTrack,update,save,pause:()=>setPlaying(false),jump:(frame:number)=>{setPlaying(false);setFrameIndex(frame);}}), [dataset,episode,selectedEpisodeIndex,currentFrameIndex,length,segments,selected,selectedBox,boxLabel,dirty,error,saving,track,revision,setFrameIndex,setPlaying]);
+  // ── SAM 动作 ──
+  const setSamMode = (b: boolean) => {
+    if (samBusy) return;
+    setSamModeState(b);
+    setSamStatus('');
+    if (b && dataset && episode !== null) {
+      setSamBusy(true);
+      setSamStatus('正在建立 SAM 会话(上传视频,首次约 1~2 分钟)…');
+      fetch('/api/bridge/sam/session', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({dataset, episode, camera: samCam})})
+        .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.detail || 'SAM 会话失败'); setSamStatus(`SAM 就绪 · ${d.camera} · 点击画面分割目标(Shift+点击=负点)`); })
+        .catch(e => { setSamStatus(String(e instanceof Error ? e.message : e)); setSamModeState(false); })
+        .finally(() => setSamBusy(false));
+    }
+  };
+  const samPoint = async (x: number, y: number, positive: boolean) => {
+    if (!dataset || episode === null || samBusy || !samMode) return;
+    setSamBusy(true); setSamStatus('SAM 推理中…');
+    const frame = currentFrameIndex;
+    try {
+      const r = await fetch('/api/bridge/sam/click', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({dataset, episode, camera: samCam, frame, object_id: samObjectId, points:[{x, y, positive}]})});
+      const d = await r.json(); if (!r.ok) throw new Error(d.detail || 'SAM 点击失败');
+      setSamObjectId(d.object_id);
+      setSamPromptFrame(f => (f === null ? frame : f));
+      setSamPropagated(false);
+      clearMaskCache(d.object_id);
+      setSamBBox(d.bbox ? {x: d.bbox.x, y: d.bbox.y, w: d.bbox.w, h: d.bbox.h} : null);
+      setSamPoints(pts => [...pts, {frame, x, y, positive}]);
+      const bb = d.bbox ? ` · 框 ${Math.round(d.bbox.w)}×${Math.round(d.bbox.h)}` : '';
+      setSamStatus(`对象 #${d.object_id} 已分割${bb} · 可继续加点修正,或点"传播跟踪"`);
+    } catch (e) { setSamStatus(String(e instanceof Error ? e.message : e)); }
+    finally { setSamBusy(false); }
+  };
+  const samPropagate = async () => {
+    if (!dataset || episode === null || samObjectId === null || samBusy) return;
+    const seg = segments[selected];
+    if (!seg) { setSamStatus('请先在 Subtask 轨道选择片段'); return; }
+    setSamBusy(true); setSamStatus('传播中…');
+    try {
+      const r = await fetch('/api/bridge/sam/propagate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({dataset, episode, camera: samCam})});
+      const d = await r.json(); if (!r.ok) throw new Error(d.detail || '传播启动失败');
+      for (;;) {
+        await new Promise(res => setTimeout(res, 1500));
+        const tr = await fetch(`/api/bridge/sam/task/${d.task_id}`);
+        const t = await tr.json(); if (!tr.ok) throw new Error(t.detail || '进度查询失败');
+        setSamProgress({done: t.done_frames, total: t.total_frames});
+        setSamStatus(`传播中 ${t.done_frames}/${t.total_frames} 帧 · ${t.fps} fps`);
+        if (t.status === 'done') break;
+        if (t.status === 'failed') throw new Error(t.error || '传播失败');
+      }
+      const br = await fetch(`/api/bridge/sam/bboxes/${samObjectId}?dataset=${encodeURIComponent(dataset)}&episode=${episode}&camera=${encodeURIComponent(samCam ?? '')}`);
+      const bd = await br.json(); if (!br.ok) throw new Error(bd.detail || '取框失败');
+      const boxes = (bd.boxes || []).filter((b: {frame:number}) => b.frame >= seg.start_frame && b.frame <= seg.end_frame);
+      if (!boxes.length) throw new Error('当前片段范围内没有跟踪到目标');
+      const first = boxes[0];
+      const maskKey = `m${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+      const newBox: Box = {id:null, x:first.x, y:first.y, width:first.w, height:first.h, label: boxLabel.trim() || '目标', keypoints: boxes.map((b: {frame:number;x:number;y:number;w:number;h:number}) => ({frame: b.frame, cx: b.x + b.w / 2, cy: b.y + b.h / 2})), camera: samCam ?? undefined, frame_boxes: boxes.map((b: {frame:number;x:number;y:number;w:number;h:number}) => ({frame: b.frame, x: b.x, y: b.y, w: b.w, h: b.h})), mask_key: maskKey};
+      update(segments.map((s, i) => (i === selected ? {...s, bboxes: [...s.bboxes, newBox]} : s)));
+      selectBox(seg.bboxes.length);
+      setSamPropagated(true);
+      prefetchMasks(samObjectId, boxes.map((b: {frame:number}) => b.frame));
+      setSamBBox(null);
+      setSamStatus(`已生成目标框:${boxes.length} 帧轨迹 · 轮廓保存中…`);
+      // mask 落盘(后台),之后刷新页面也能预览
+      fetch('/api/bridge/sam/finalize', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({dataset, episode, camera: samCam, object_id: samObjectId, mask_key: maskKey})})
+        .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.detail || '轮廓保存失败'); setSamStatus(`目标框已生成:${boxes.length} 帧轨迹 · 轮廓已存盘 ${d.saved} 帧 · Ctrl/⌘+S 保存`); })
+        .catch(e => setSamStatus(`目标框已生成,但轮廓存盘失败: ${e instanceof Error ? e.message : e}`));
+    } catch (e) { setSamStatus(String(e instanceof Error ? e.message : e)); }
+    finally { setSamBusy(false); setSamProgress(null); }
+  };
+  const samDiscard = async () => {
+    if (dataset && episode !== null && samObjectId !== null) {
+      try { await fetch(`/api/bridge/sam/object/${samObjectId}?dataset=${encodeURIComponent(dataset)}&episode=${episode}&camera=${encodeURIComponent(samCam ?? '')}`, {method:'DELETE'}); } catch { /* 忽略 */ }
+    }
+    samReset(); setSamStatus('已放弃该对象,可重新点选');
+  };
+  const sam: SamState = {mode: samMode, busy: samBusy, status: samStatus, objectId: samObjectId, promptFrame: samPromptFrame, propagated: samPropagated, progress: samProgress, points: samPoints, bbox: samBBox, camera: samCam};
+  const value = useMemo(() => ({dataset,setDataset,episode,currentEpisode:selectedEpisodeIndex,frame:currentFrameIndex,length,segments,selected,select,selectedBox,selectBox,boxLabel,setBoxLabel,dirty,error,saving,track,setTrack,update,save,pause:()=>setPlaying(false),jump:(frame:number)=>{setPlaying(false);setFrameIndex(frame);},cameras,sam,setSamMode,setSamCamera,samPoint,samPropagate,samDiscard,samMaskUrl,showMasks,setShowMasks}), [dataset,episode,selectedEpisodeIndex,currentFrameIndex,length,segments,selected,selectedBox,boxLabel,dirty,error,saving,track,revision,setFrameIndex,setPlaying,samMode,samBusy,samStatus,samObjectId,samPromptFrame,samPropagated,samProgress,samPoints,samBBox,samCam,cameras,samMaskVersion,showMasks]);
   const ranges = useMemo(() => ({segments, selected, active: !!dataset && episode !== null && episode === selectedEpisodeIndex}), [segments,selected,dataset,episode,selectedEpisodeIndex]);
   return <AnnotationRangesContext.Provider value={ranges}><AnnotationContext.Provider value={value}>{children}</AnnotationContext.Provider></AnnotationRangesContext.Provider>;
 }

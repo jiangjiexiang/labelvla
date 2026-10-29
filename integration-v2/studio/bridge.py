@@ -142,7 +142,22 @@ def bridge_write_segments(dataset: str, episode: int, payload: dict):
                         if raw_bboxes[bi].get(extra):
                             item_bbox[extra] = raw_bboxes[bi][extra]
                 if bbox.keypoints:
-                    item_bbox['interpolated_centers'] = [{'frame': i, 'cx': round(interpolate_bbox_center(bbox, i, segment.start_frame, segment.end_frame)[0], 1), 'cy': round(interpolate_bbox_center(bbox, i, segment.start_frame, segment.end_frame)[1], 1)} for i in range(segment.start_frame, segment.end_frame + 1)]
+                    fbx = {}
+                    if bi < len(raw_bboxes) and raw_bboxes[bi].get('frame_boxes'):
+                        fbx = {int(e['frame']): e for e in raw_bboxes[bi]['frame_boxes']}
+                    centers = []
+                    for i in range(segment.start_frame, segment.end_frame + 1):
+                        cx, cy = interpolate_bbox_center(bbox, i, segment.start_frame, segment.end_frame)
+                        entry = {'frame': i, 'cx': round(cx, 1), 'cy': round(cy, 1)}
+                        fb = fbx.get(i)
+                        if fb:
+                            entry.update({'x': fb['x'], 'y': fb['y'], 'w': fb['w'], 'h': fb['h']})
+                        else:
+                            entry.update({'x': round(cx - bbox.width / 2, 1),
+                                          'y': round(cy - bbox.height / 2, 1),
+                                          'w': bbox.width, 'h': bbox.height})
+                        centers.append(entry)
+                    item_bbox['interpolated_centers'] = centers
             result.append(item)
         store.file_path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(prefix='.labelvla-', dir=store.file_path.parent)

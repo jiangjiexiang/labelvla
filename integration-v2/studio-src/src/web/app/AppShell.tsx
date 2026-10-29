@@ -30,6 +30,9 @@ import { Upload } from 'lucide-react';
 import { ServerBridge } from './ServerBridge';
 import { SubtaskBridge } from '../annotation/SubtaskBridge';
 import { AnnotationPanel } from '../annotation/AnnotationPanel';
+import { Login } from './Login';
+import { PlatformPages } from './platform/PlatformPages';
+import { initAuth, useAuth } from './platform/authStore';
 import './unified.css';
 
 // 扩展 Window 类型以支持测试 API
@@ -92,6 +95,10 @@ export function AppShell() {
   const { healthDialogOpen, setHealthDialogOpen } = useLeRobotUi();
   const { upsertTask, completeTask, failTask, clear: clearTasks } = useLoading();
   const { history, addHistoryItem, clearHistoryHandleFlag } = useOpenHistory();
+
+  // ── 平台守卫:未登录只显示登录页(Agent C) ──
+  const { user, ready, bypass } = useAuth();
+  useEffect(() => { void initAuth(); }, []);
 
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [playbackBarVisible, setPlaybackBarVisible] = useState(true);
@@ -300,6 +307,14 @@ export function AppShell() {
   const hasData = info !== null && episodes.length > 0;
   const shouldShowSidebar = hasData && sidebarVisible;
 
+  // ── 平台守卫(所有 hook 之后才能 early return;bypass=认证后端未部署) ──
+  if (!ready) {
+    return <div className="flex h-screen items-center justify-center bg-background text-sm text-muted-foreground">加载中…</div>;
+  }
+  if (!user && !bypass) {
+    return <Login />;
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
       <Navbar
@@ -386,6 +401,9 @@ export function AppShell() {
 
       {/* Toast Manager */}
       <Toaster />
+
+      {/* ROUTE_SLOT: 平台页(概览/数据集/用户/质检),Agent C */}
+      <PlatformPages />
     </div>
   );
 }

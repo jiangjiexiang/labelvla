@@ -21,14 +21,14 @@ function stripPageParam() {
 }
 
 function readInitialPage(): PlatformPage {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined') return 'datasets';
   const fromUrl = parsePage(new URLSearchParams(window.location.search).get('page'));
   stripPageParam();
   if (fromUrl) {
     try { window.sessionStorage.setItem(STORAGE_KEY, fromUrl); } catch { /* 忽略存储限制 */ }
     return fromUrl;
   }
-  try { return parsePage(window.sessionStorage.getItem(STORAGE_KEY)); } catch { return null; }
+  try { return parsePage(window.sessionStorage.getItem(STORAGE_KEY)) ?? 'datasets'; } catch { return 'datasets'; }
 }
 
 let currentPage = readInitialPage();

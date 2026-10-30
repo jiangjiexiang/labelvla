@@ -109,7 +109,7 @@ bridge 读写 segments 时 `skill/object/target/adverb` 走现有 extras 透传�
 4. `Dashboard.tsx`:四指标卡 + 三个手写 SVG 环形图 + 四条 uplot 趋势线;手动刷新;深色兼容
 5. `QcReport.tsx`:按 episode 分组列问题,点击跳转到对应 episode+frame 的标注页
 
-**验收**:`BASE_PATH=/studio/ npm run build` 过 tsc;页面中文、风格沿用现有 Tailwind 体系。
+**验收**:`BASE_PATH=/ npm run build` 过 tsc;页面中文、风格沿用现有 Tailwind 体系。
 
 ---
 
@@ -149,7 +149,7 @@ bridge 读写 segments 时 `skill/object/target/adverb` 走现有 extras 透传�
 
 ## 2. 集成与验收(全部并行任务完成后,我做)
 
-1. `npm run build`(必须 `BASE_PATH=/studio/`)+ `py_compile` + 重启容器
+1. `npm run build`(必须 `BASE_PATH=/`)+ `py_compile` + 重启容器
 2. 端到端验收清单:
    - 未登录访问 → 跳登录;admin 登录 → 建标注员/审核员账号
    - 数据集列表数字与 `du`/人工抽查一致
@@ -168,7 +168,7 @@ bridge 读写 segments 时 `skill/object/target/adverb` 走现有 extras 透传�
 ## 3. 给 agent 的通用背景(每个 prompt 都要带)
 
 - 项目:`/home/robam/labelvla-docker`,部署见 `integration-v2/README.txt`
-- 前端源码 `integration-v2/studio-src`,构建 `BASE_PATH=/studio/ npm run build`,
+- 前端源码 `integration-v2/studio-src`,构建 `BASE_PATH=/ npm run build`,
   部署 `rsync -a --delete --exclude bridge.py --exclude bridge_ext --exclude __pycache__ dist/ ../studio/`(bridge_ext 必须排除,里面是平台后端源码)
 - 后端 `integration-v2/studio/bridge.py`(bind-mount 进容器 `labelvla-studio-integrated`,改后 `docker restart`)
 - 容器 Python 无 requests/httpx,用 urllib;数据根 `/data`(宿主机 `./data`)

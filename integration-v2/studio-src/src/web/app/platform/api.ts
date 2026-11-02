@@ -42,6 +42,7 @@ export interface User {
 export interface LoginRecord { login_at: string; logout_at?: string | null; ip?: string; device?: string }
 export type EpisodeStatus = 'untagged' | 'labeling' | 'review' | 'approved' | 'rejected';
 export interface DatasetRow {
+  robot_tag?: string;
   path: string; name: string; episodes: number; size_gb: number | null; cameras: number; hours: number;
   counts: Record<EpisodeStatus, number>; qc: { pass: number | null; fail: number }; updated_at?: string;
   deleted?: boolean;
@@ -68,6 +69,7 @@ export interface TaskNode {
 }
 export interface TaskEvent { id: number; at: string; node?: string | null; level: string; message: string }
 export interface Task {
+  assignee?: string | null; assignee_name?: string | null;
   id: number; name: string; dataset: string; dataset_name: string; task_type: string; task_type_label: string;
   create_mode: string; base_task_id?: number | null; description?: string | null;
   status: TaskStatus; current_node?: string | null; progress: number;
@@ -124,7 +126,7 @@ export const api = {
   users: () => get<User[]>('/api/bridge/users'),
   createUser: (u: { username: string; display_name: string; password: string; role: Role; expires_at?: string | null }) =>
     post<User>('/api/bridge/users', u),
-  updateUser: (id: number, u: Partial<Pick<User, 'display_name' | 'role' | 'expires_at'>> & { password?: string }) =>
+  updateUser: (id: number, u: Partial<Pick<User, 'display_name' | 'role' | 'expires_at' | 'disabled'>> & { password?: string }) =>
     patch<User>(`/api/bridge/users/${id}`, u),
   disableUser: (id: number) => post<{ ok: boolean }>(`/api/bridge/users/${id}/disable`),
   deleteUser: (id: number) => del<{ ok: boolean }>(`/api/bridge/users/${id}`),
@@ -143,6 +145,7 @@ export const api = {
       ...row,
     }));
   },
+  setRobotTag: (dataset: string, robot_tag: string) => post<{ ok: boolean }>('/api/bridge/admin/datasets/robot-tag', { dataset, robot_tag }),
   rescan: () => post<{ ok: boolean }>('/api/bridge/admin/rescan'),
   deleteDataset: (path: string) => post<{ ok: boolean }>('/api/bridge/admin/datasets/delete', { path }),
   restoreDataset: (name: string) => post<{ ok: boolean }>('/api/bridge/admin/datasets/restore', { name }),
@@ -163,7 +166,7 @@ export const api = {
   },
   task: (id: number) => get<TaskDetail>(`/api/bridge/tasks/${id}`),
   taskStats: () => get<TaskStats>('/api/bridge/tasks/stats'),
-  createTask: (payload: { name: string; dataset: string; task_type: string; create_mode?: string; description?: string; base_task_id?: number | null }) =>
+  createTask: (payload: { name: string; dataset: string; task_type: string; create_mode?: string; description?: string; assignee?: string; base_task_id?: number | null }) =>
     post<TaskDetail>('/api/bridge/tasks', payload),
   cancelTask: (id: number) => post<TaskDetail>(`/api/bridge/tasks/${id}/cancel`),
   retryTask: (id: number) => post<TaskDetail>(`/api/bridge/tasks/${id}/retry`),

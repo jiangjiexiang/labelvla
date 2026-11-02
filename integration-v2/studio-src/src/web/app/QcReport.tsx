@@ -85,10 +85,10 @@ export function QcReport() {
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold">质检报告</span>
         <select
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+          className="h-8 w-full min-w-0 rounded-md border border-input bg-background px-2 text-xs sm:w-auto"
           value={dataset}
           onChange={(e) => setDataset(e.target.value)}
         >
@@ -116,7 +116,7 @@ export function QcReport() {
               <Badge variant="secondary" className={it.severity === 'error' ? 'text-red-600' : 'text-amber-600'}>
                 {RULE_LABEL[it.rule] ?? it.rule}
               </Badge>
-              {it.frame !== null && it.frame >= 0 && <span className="tabular-nums text-muted-foreground">帧 {it.frame}</span>}
+              {it.frame !== null && it.frame >= 0 && <span className="shrink-0 tabular-nums text-muted-foreground">帧 {it.frame}</span>}
               <span className="truncate text-muted-foreground">{it.detail}</span>
               <span className="ml-auto shrink-0 text-primary">{jumping === `${it.episode}:${it.frame}` ? '跳转中…' : '查看 →'}</span>
             </button>

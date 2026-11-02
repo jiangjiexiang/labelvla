@@ -13,7 +13,8 @@ def _user_dict(row):
     return {'id': row['id'], 'username': row['username'],
             'display_name': row['display_name'], 'role': row['role'],
             'disabled': bool(row['disabled']), 'expires_at': row['expires_at'],
-            'created_by': row['created_by'], 'created_at': row['created_at']}
+            'created_by': row['created_by'], 'created_at': row['created_at'],
+            'last_login': row['last_login']}
 
 
 def _get_user(uid: int):
@@ -32,7 +33,7 @@ def _check_manage(actor: dict, target):
 
 
 def _check_role_grant(actor: dict, role: str):
-    if ROLE_LEVEL[actor['role']] <= ROLE_LEVEL[role]:
+    if actor['role'] != 'admin' and ROLE_LEVEL[actor['role']] <= ROLE_LEVEL[role]:
         raise HTTPException(403, '不能创建或授予不低于自己角色的账号')
 
 
@@ -47,7 +48,8 @@ def register(app):
     def list_users(request: Request):
         with get_db() as conn:
             rows = conn.execute(
-                'SELECT * FROM users WHERE deleted_at IS NULL ORDER BY id').fetchall()
+                'SELECT u.*, (SELECT MAX(l.login_at) FROM login_logs l WHERE l.user_id = u.id) AS last_login '
+                'FROM users u WHERE u.deleted_at IS NULL ORDER BY u.id').fetchall()
         return [_user_dict(r) for r in rows]
 
     @app.post('/api/bridge/users')
@@ -85,7 +87,11 @@ def register(app):
     def update_user(uid: int, payload: dict, request: Request):
         actor = request.state.user
         target = _get_user(uid)
-        _check_manage(actor, target)
+        if actor['role'] == 'admin' and (set(payload) == {'role'} or (set(payload) == {'disabled'} and payload['disabled'] is False)):
+            if target['id'] == actor['id']:
+                raise HTTPException(400, '不能修改自己的角色')
+        else:
+            _check_manage(actor, target)
         sets, args = [], []
         if 'display_name' in payload:
             sets.append('display_name = ?')
@@ -149,7 +155,8 @@ def register(app):
         actor = request.state.user
         target = _get_user(uid)
         if target['id'] != actor['id']:
-            _check_manage(actor, target)
+            if actor['role'] != 'admin':
+                _check_manage(actor, target)
         with get_db() as conn:
             rows = conn.execute(
                 'SELECT id, login_at, logout_at, ip, device FROM login_logs'

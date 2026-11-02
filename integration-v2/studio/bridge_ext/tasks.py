@@ -98,6 +98,11 @@ CREATE TABLE IF NOT EXISTS versions(
 def init_schema():
     with db_session() as db:
         db.executescript(_SCHEMA)
+        columns = {r['name'] for r in db.execute('PRAGMA table_info(tasks)')}
+        if 'assignee' not in columns:
+            db.execute('ALTER TABLE tasks ADD COLUMN assignee TEXT')
+        if 'assignee_name' not in columns:
+            db.execute('ALTER TABLE tasks ADD COLUMN assignee_name TEXT')
 
 
 # ── 工具 ──────────────────────────────────────────────────
@@ -500,6 +505,16 @@ def create_task(request: Request, payload: dict):
     task_type = str(payload.get('task_type') or 'video_annotation')
     if task_type not in TASK_TYPES:
         raise HTTPException(400, '未知任务类型')
+    assignee = str(payload.get('assignee') or '').strip()
+    assignee_name = None
+    if task_type == 'video_annotation' and not assignee:
+        raise HTTPException(400, '请选择标注负责人')
+    if assignee:
+        with db_session() as db:
+            person = db.execute('SELECT * FROM users WHERE username=? AND deleted_at IS NULL', (assignee,)).fetchone()
+        if person is None or person['disabled'] or (person['expires_at'] and person['expires_at'] <= now_iso()):
+            raise HTTPException(400, '分配账号不存在、已禁用或已过期')
+        assignee_name = person['display_name'] or person['username']
     nodes = TASK_TYPES[task_type]
     try:
         info = json.loads((p / 'meta' / 'info.json').read_text(encoding='utf8'))
@@ -516,6 +531,7 @@ def create_task(request: Request, payload: dict):
              payload.get('base_task_id'), str(payload.get('description') or ''),
              'pending', episodes, user['username'], now, now))
         task_id = cur.lastrowid
+        db.execute('UPDATE tasks SET assignee=?, assignee_name=? WHERE id=?', (assignee or None, assignee_name, task_id))
         db.executemany(
             'INSERT INTO task_nodes(task_id, seq, key, name, status) VALUES (?,?,?,?,?)',
             [(task_id, i, key, label, 'waiting') for i, (key, label) in enumerate(nodes)])

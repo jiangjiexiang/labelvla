@@ -11,6 +11,7 @@ import os
 import re
 import threading
 import time
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -260,8 +261,13 @@ def get_ledger(force: bool = False) -> list:
 
 def ledger_public(row: dict) -> dict:
     """台账契约字段(docs/platform-plan.md 0.2)。"""
-    return {k: row[k] for k in
+    result = {k: row[k] for k in
             ('path', 'name', 'episodes', 'size_gb', 'cameras', 'hours', 'counts', 'qc', 'updated_at')}
+    try:
+        result['robot_tag'] = json.loads((Path(row['path']) / '_platform' / 'robot.json').read_text()).get('robot_tag', '')
+    except (OSError, ValueError):
+        result['robot_tag'] = ''
+    return result
 
 
 # ── 回收站 ────────────────────────────────────────────────
@@ -348,6 +354,30 @@ def admin_restore_dataset(request: Request, payload: dict):
         _ledger_cache['rows'] = None
         _size_cache.pop(str(src), None)
     return {'ok': True, 'path': str(dst)}
+
+
+@router.post('/api/bridge/admin/datasets/robot-tag')
+def set_robot_tag(request: Request, payload: dict):
+    require(request, 'admin', 'reviewer')
+    dataset = safe_dataset(str(payload.get('dataset') or ''))
+    tag = payload.get('robot_tag', '')
+    if not isinstance(tag, str) or len(tag.strip()) > 80:
+        raise HTTPException(400, '机器人标签最多 80 个字符')
+    tag = tag.strip()
+    folder = dataset / '_platform'
+    if folder.is_symlink():
+        raise HTTPException(400, '平台目录不能是符号链接')
+    folder.mkdir(exist_ok=True)
+    temp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', dir=folder, delete=False, encoding='utf-8') as f:
+            temp = f.name
+            json.dump({'robot_tag': tag}, f, ensure_ascii=False)
+        os.replace(temp, folder / 'robot.json')
+    finally:
+        if temp and os.path.exists(temp):
+            os.unlink(temp)
+    return {'ok': True, 'robot_tag': tag}
 
 
 def register(app):

@@ -35,8 +35,15 @@ export function Users() {
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
   };
 
+  const changeRole = async (u: User, role: Role) => {
+    if (role === u.role || !window.confirm(`将 ${u.username} 的角色修改为${ROLE_LABEL[role]}？`)) return;
+    setError('');
+    try { await api.updateUser(u.id, { role }); await load(); }
+    catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+  };
+
   const disable = async (u: User) => {
-    try { await api.disableUser(u.id); await load(); }
+    try { if (u.disabled) await api.updateUser(u.id, { disabled: false }); else await api.disableUser(u.id); await load(); }
     catch (err) { setError(err instanceof Error ? err.message : String(err)); }
   };
 
@@ -66,8 +73,8 @@ export function Users() {
       </div>
       {error && <p className="m-0 text-xs text-destructive">{error}</p>}
 
-      <div className="overflow-hidden rounded-md border border-border">
-        <table className="w-full text-xs">
+      <div className="overflow-x-auto rounded-md border border-border">
+        <table className="w-full text-xs" style={{ minWidth: 800 }}>
           <thead className="bg-muted/50 text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">登录帐号</th>
@@ -84,7 +91,11 @@ export function Users() {
               <tr key={u.id} className="border-t border-border hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">{u.username}</td>
                 <td className="px-3 py-2">{u.display_name}</td>
-                <td className="px-3 py-2">{ROLE_LABEL[u.role] ?? u.role}</td>
+                <td className="px-3 py-2">{me?.role === 'admin' && me.id !== u.id ? (
+                  <select aria-label={`修改 ${u.username} 的角色`} className="rounded border border-border bg-background px-2 py-1" style={{ width: 110, height: 30, display: 'inline-block', margin: 0, fontSize: 12, verticalAlign: 'middle' }} value={u.role} onChange={(e) => void changeRole(u, e.target.value as Role)}>
+                    {(['annotator', 'reviewer', 'admin'] as Role[]).map((role) => <option key={role} value={role}>{ROLE_LABEL[role]}</option>)}
+                  </select>
+                ) : (ROLE_LABEL[u.role] ?? u.role)}</td>
                 <td className="px-3 py-2">{statusOf(u)}</td>
                 <td className="px-3 py-2">
                   {u.last_login ? (
@@ -95,10 +106,10 @@ export function Users() {
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">{u.expires_at ?? '永久有效'}</td>
                 <td className="px-3 py-2 text-right">
-                  {canManage(u) ? (
+                  {(canManage(u) || (!!me && me.role === 'admin' && me.id !== u.id && u.disabled)) ? (
                     <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => void disable(u)}>禁用</Button>
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive" onClick={() => void remove(u)}>删除</Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => void disable(u)}>{u.disabled ? '启用' : '禁用'}</Button>
+                      {canManage(u) && <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive" onClick={() => void remove(u)}>删除</Button>}
                     </div>
                   ) : <span className="text-muted-foreground">—</span>}
                 </td>
@@ -119,7 +130,7 @@ export function Users() {
             <Input placeholder="姓名(显示名)" value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
             <Input type="password" placeholder="初始密码(至少 6 位)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             <div className="flex gap-1">
-              {(['annotator', 'reviewer', 'admin'] as Role[]).map((r) => (
+              {(['annotator', 'reviewer', 'admin'] as Role[]).filter((r) => me?.role === 'admin' || ROLE_LEVEL[me?.role ?? 'annotator'] > ROLE_LEVEL[r]).map((r) => (
                 <Button key={r} type="button" size="sm" variant={form.role === r ? 'secondary' : 'outline'} className="h-7 flex-1 px-2 text-[11px]" onClick={() => setForm({ ...form, role: r })}>
                   {ROLE_LABEL[r]}
                 </Button>

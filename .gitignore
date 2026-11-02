@@ -31,3 +31,7 @@ playwright-report/
 test-results/
 .pytest_cache/
 *.tsbuildinfo
+
+# 本地页面验收临时文件
+/integration-v2/studio-src/.events-*.png
+/integration-v2/studio-src/.events-check.mjs

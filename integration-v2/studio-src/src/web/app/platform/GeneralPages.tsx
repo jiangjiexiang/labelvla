@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import {
   api, NODE_STATUS_LABEL, STATUS_LABEL, TASK_STATUS_LABEL, TASK_TYPE_OPTIONS,
-  type EpisodeRow, type Task, type TaskDetail, type TaskStats, type VersionRow, type VideoRow,
+  type User, type EpisodeRow, type Task, type TaskDetail, type TaskStats, type VersionRow, type VideoRow,
 } from './api';
 import { usePage, useSelection } from './usePage';
 
@@ -48,7 +48,7 @@ function Heading({ eyebrow, title, description, children }: {
 }) {
   return (
     <>
-      <div className="g-breadcrumb">工作空间 <ChevronRight /> <span>{eyebrow}</span></div>
+      <div className="g-breadcrumb"><span>{eyebrow}</span></div>
       <div className="g-heading">
         <div><h1>{title}</h1><p>{description}</p></div>
         <div className="g-heading-actions">{children}</div>
@@ -207,7 +207,7 @@ export function TasksPage() {
             <thead>
               <tr>
                 <th>任务 ID</th><th>任务名称</th><th>关联数据集</th><th>状态</th>
-                <th>处理进度</th><th>创建人</th><th>当前节点</th><th>操作</th>
+                <th>处理进度</th><th>标注负责人</th><th>创建人</th><th>当前节点</th><th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -221,6 +221,7 @@ export function TasksPage() {
                   <td>{task.dataset_name}</td>
                   <td><span className={`g-status ${statusTone(task.status)}`}>● {TASK_STATUS_LABEL[task.status]}</span></td>
                   <td><Progress value={task.progress} /></td>
+                  <td>{task.assignee_name || task.assignee || '未分配'}</td>
                   <td>{task.created_by || '-'}</td>
                   <td>{task.nodes.find((n) => n.key === task.current_node)?.name ?? '-'}</td>
                   <td>
@@ -253,6 +254,12 @@ export function TaskCreatePage() {
   const [name, setName] = useState('');
   const [dataset, setDataset] = useState('');
   const [taskType, setTaskType] = useState('video_annotation');
+  const [assignee, setAssignee] = useState('');
+  const [people, setPeople] = useState<User[]>([]);
+  useEffect(() => {
+    api.users().then((users) => setPeople(users.filter((u) => !u.disabled && (!u.expires_at || new Date(u.expires_at).getTime() > Date.now()))))
+      .catch((e) => setError(`负责人列表加载失败：${errText(e)}`));
+  }, []);
   const [createMode, setCreateMode] = useState('new');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -267,6 +274,7 @@ export function TaskCreatePage() {
 
   const submit = async () => {
     if (!dataset) { setError('请先选择数据集'); return; }
+    if (taskType === 'video_annotation' && !assignee) { setError('请选择标注负责人'); return; }
     setSubmitting(true);
     setError('');
     try {
@@ -274,6 +282,7 @@ export function TaskCreatePage() {
         name: name.trim() || `${datasets.find((d) => d.path === dataset)?.name ?? '数据集'} · 数据生产`,
         dataset,
         task_type: taskType,
+        assignee,
         create_mode: createMode,
         description: description.trim(),
       });
@@ -315,6 +324,12 @@ export function TaskCreatePage() {
             </label>
             <label className="full">关联数据集
               <DatasetPicker value={dataset} onChange={setDataset} datasets={datasets} />
+            </label>
+            <label className="full">分配给
+              <select value={assignee} required={taskType === 'video_annotation'} onChange={(e) => setAssignee(e.target.value)}>
+                <option value="">请选择标注负责人</option>
+                {people.map((u) => <option key={u.id} value={u.username}>{u.display_name || u.username}（{u.username}）</option>)}
+              </select>
             </label>
             <label className="full">任务描述
               <textarea
@@ -450,6 +465,7 @@ export function TaskDetailPage() {
               ['任务类型', task.task_type_label],
               ['所属数据集', task.dataset_name],
               ['Episodes', String(task.episodes_total)],
+              ['标注负责人', task.assignee_name || task.assignee || '未分配'],
               ['创建人', task.created_by || '-'],
               ['创建时间', fmtTime(task.created_at)],
               ['开始时间', fmtTime(task.started_at)],
@@ -523,7 +539,7 @@ export function TaskDetailPage() {
         ))}
       </section>
 
-      <section className="g-card">
+      <section className="g-card g-table-card g-events-card">
         <div className="g-card-title"><div><h2>执行事件</h2><p>最近的流水线事件</p></div></div>
         <div className="g-table-wrap">
           <table>

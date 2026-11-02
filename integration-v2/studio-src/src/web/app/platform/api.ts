@@ -174,7 +174,7 @@ export const api = {
     post<TaskDetail>('/api/bridge/tasks', payload),
   cancelTask: (id: number) => post<TaskDetail>(`/api/bridge/tasks/${id}/cancel`),
   retryTask: (id: number) => post<TaskDetail>(`/api/bridge/tasks/${id}/retry`),
-  completeNode: (id: number, key: string) => post<TaskDetail>(`/api/bridge/tasks/${id}/nodes/${key}/complete`),
+  completeNode: (id: number, key: string, decision: 'approved' | 'rejected' = 'approved', reason?: string) => post<TaskDetail>(`/api/bridge/tasks/${id}/nodes/${key}/complete`, { decision, reason }),
   // episodes / videos / versions
   episodes: (dataset: string, q = '') =>
     get<EpisodesPayload>(`/api/bridge/episodes?dataset=${encodeURIComponent(dataset)}${q ? `&q=${encodeURIComponent(q)}` : ''}`),

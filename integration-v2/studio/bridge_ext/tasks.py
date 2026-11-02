@@ -17,6 +17,8 @@ import queue
 import tarfile
 import threading
 import traceback
+import tempfile
+import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
@@ -33,7 +35,7 @@ TASK_TYPES = {
 }
 TASK_TYPE_LABEL = {'video_annotation': '视频标注任务',
                    'preprocess': '数据预处理任务', 'qc': '数据质检任务'}
-HUMAN_NODES = {'annotate'}
+HUMAN_NODES = {'annotate', 'qc'}
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS tasks(
@@ -103,7 +105,14 @@ def init_schema():
         event_columns = {r['name'] for r in db.execute('PRAGMA table_info(task_events)')}
         if 'actor' not in event_columns:
             db.execute('ALTER TABLE task_events ADD COLUMN actor TEXT')
+        version_columns = {r['name'] for r in db.execute('PRAGMA table_info(versions)')}
+        for column in ('bundle_path', 'source_bundle'):
+            if column not in version_columns:
+                db.execute(f'ALTER TABLE versions ADD COLUMN {column} TEXT')
+        db.execute('CREATE UNIQUE INDEX IF NOT EXISTS versions_source_bundle ON versions(source_bundle) WHERE source_bundle IS NOT NULL')
         columns = {r['name'] for r in db.execute('PRAGMA table_info(tasks)')}
+        if 'export_dir' not in columns:
+            db.execute('ALTER TABLE tasks ADD COLUMN export_dir TEXT')
         if 'reviewer' not in columns:
             db.execute('ALTER TABLE tasks ADD COLUMN reviewer TEXT')
         if 'reviewer_name' not in columns:
@@ -223,84 +232,131 @@ def _node_qc(ctx, progress):
     return {'issues': len(rows), 'failed_episodes': len(failed), 'scanned': len(files)}
 
 
-def _node_package(ctx, progress):
-    p = ctx['path']
-    out = _exports_dir(ctx['task_id'])
-    seg_out = out / 'segments'
-    seg_out.mkdir(parents=True, exist_ok=True)
-    for old in seg_out.glob('*.json'):
-        old.unlink()
+def _file_sha256(path):
+    h = hashlib.sha256()
+    with Path(path).open('rb') as f:
+        for block in iter(lambda: f.read(1024 * 1024), b''):
+            h.update(block)
+    return h.hexdigest()
 
-    seg_dir = p / 'segments'
+
+def _node_package(ctx, progress):
+    p = ctx['path'].resolve()
+    exports = data_root() / '.platform' / 'exports'
+    exports.mkdir(parents=True, exist_ok=True)
+    if p == exports.resolve() or p in exports.resolve().parents:
+        raise RuntimeError('导出目录不能位于源数据集内部')
+    out = Path(tempfile.mkdtemp(prefix=f'task_{ctx["task_id"]}_', dir=exports))
+    target = out / 'dataset'
+    target.mkdir()
     from .exclusions import excluded
     skip_rows = excluded(str(p))
-    files = [f for f in sorted(seg_dir.glob('episode_*.json')) if int(f.stem.split('_')[1]) not in skip_rows] if seg_dir.is_dir() else []
-    copied, annotations = 0, 0
-    for i, f in enumerate(files):
-        try:
-            data = json.loads(f.read_text(encoding='utf8'))
-        except Exception:
+    source_files = {}
+    for item in p.rglob('*'):
+        if item.is_symlink():
+            raise RuntimeError(f'完整快照暂不接受符号链接：{item.relative_to(p)}')
+        if item.is_file():
+            stat = item.stat()
+            source_files[item.relative_to(p).as_posix()] = (stat.st_size, stat.st_mtime_ns)
+        elif item.is_dir():
+            (target / item.relative_to(p)).mkdir(parents=True, exist_ok=True)
+    inventory = []
+    for i, (relative, before) in enumerate(sorted(source_files.items())):
+        source_file = p / relative
+        dest = target / relative
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_file, dest)
+        digest = _file_sha256(source_file)
+        if _file_sha256(dest) != digest:
+            raise RuntimeError(f'文件复制校验失败：{relative}')
+        after = source_file.stat()
+        if (after.st_size, after.st_mtime_ns) != before:
+            raise RuntimeError(f'复制过程中源数据发生变化：{relative}，请停止编辑后重新打包')
+        inventory.append({'path': relative, 'bytes': before[0], 'sha256': digest})
+        if i % 20 == 0 or i == len(source_files)-1:
+            progress(int(75 * (i+1) / max(1,len(source_files))), f'完整复制 {i+1}/{len(source_files)} 个文件')
+    after_files = {f.relative_to(p).as_posix(): (f.stat().st_size, f.stat().st_mtime_ns) for f in p.rglob('*') if f.is_file()}
+    if after_files != source_files:
+        raise RuntimeError('复制期间数据集发生变化，请重新打包')
+    info = json.loads((target / 'meta/info.json').read_text(encoding='utf8'))
+    annotations = 0
+    for f in (target / 'segments').glob('episode_*.json'):
+        if int(f.stem.split('_')[1]) in skip_rows:
             continue
-        (seg_out / f.name).write_text(json.dumps(data, ensure_ascii=False, indent=1),
-                                      encoding='utf8')
-        copied += 1
-        annotations += len(data.get('segments') or [])
-        if i % 10 == 0 or i == len(files) - 1:
-            progress(int(80 * (i + 1) / max(1, len(files))), f'导出 {i + 1}/{len(files)}')
-
-    manifest = {
-        'task_id': ctx['task_id'], 'task_name': ctx['name'], 'dataset': str(p),
-        'episodes': copied, 'annotations': annotations, 'skipped_episodes': list(skip_rows.values()),
-        'generated_at': now_iso(), 'source': 'labelvla-studio',
-    }
-    (out / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=1),
-                                       encoding='utf8')
-    progress(90, '打包 tar.gz')
-    tgz = out.with_suffix('.tar.gz')
-    with tarfile.open(tgz, 'w:gz') as tar:
+        annotations += len(json.loads(f.read_text(encoding='utf8')).get('segments') or [])
+    with db_session() as db:
+        has_status = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='dataset_status'").fetchone()
+        statuses = [dict(r) for r in db.execute('SELECT * FROM dataset_status WHERE dataset=?', (str(p),))] if has_status else []
+    manifest = {'task_id': ctx['task_id'], 'task_name': ctx['name'], 'dataset': str(p),
+                'export_kind': 'full_dataset', 'episodes': int(info.get('total_episodes') or 0),
+                'annotations': annotations, 'skipped_episodes': list(skip_rows.values()),
+                'platform_status': statuses, 'files': inventory,
+                'generated_at': now_iso(), 'source': 'labelvla-studio'}
+    (out / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding='utf8')
+    progress(80, '打包完整数据集：视频、Parquet、元数据和标注')
+    tgz = Path(str(out) + '.tar.gz')
+    with tarfile.open(tgz, 'x:gz') as tar:
         tar.add(out / 'manifest.json', arcname='manifest.json')
-        tar.add(seg_out, arcname='segments')
-    size = tgz.stat().st_size
-    progress(100, f'{copied} 个 episode / {annotations} 条标注 → {tgz.name} ({size / 1024:.0f} KB)')
-    return {'episodes': copied, 'annotations': annotations, 'skipped_episodes': list(skip_rows.values()),
-            'bundle': str(tgz), 'bytes': size}
+        tar.add(target, arcname='dataset')
+    with db_session() as db:
+        db.execute('UPDATE tasks SET export_dir=? WHERE id=?', (str(out), ctx['task_id']))
+    progress(100, f'完整数据集 {manifest["episodes"]} 个 episode / {len(inventory)} 个文件')
+    return {'episodes': manifest['episodes'], 'annotations': annotations, 'bundle': str(tgz), 'bytes': tgz.stat().st_size}
 
 
 def _node_compile(ctx, progress):
     p = ctx['path']
-    info = json.loads((p / 'meta' / 'info.json').read_text(encoding='utf8'))
-    out = _exports_dir(ctx['task_id'])
-    tgz = out.with_suffix('.tar.gz')
-    progress(30, '计算产物摘要')
-    h = hashlib.sha256()
-    if tgz.is_file():
-        with tgz.open('rb') as f:
-            for chunk in iter(lambda: f.read(1 << 20), b''):
-                h.update(chunk)
-    digest = h.hexdigest()
-
     with db_session() as db:
-        base = db.execute("SELECT version FROM versions WHERE dataset=? ORDER BY id DESC LIMIT 1",
-                          (str(p),)).fetchone()
-        n = 1
-        if base is not None:
-            try:
-                n = int(str(base['version']).lstrip('Vv').split('.')[0]) + 1
-            except ValueError:
-                n = 1
-        version = f'V{n}.0'
-        note = (f'任务 {ctx["task_id"]} · {ctx["name"]}')
-        size_gb = round(sum(f.stat().st_size for f in out.rglob('*') if f.is_file())
-                        / 1024 ** 3, 3) if out.is_dir() else 0
-        db.execute(
-            'INSERT OR REPLACE INTO versions'
-            '(dataset, dataset_name, version, note, episodes, size_gb, status, task_id,'
-            ' manifest, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-            (str(p), p.name, version, note, int(info.get('total_episodes') or 0), size_gb,
-             '已发布', ctx['task_id'], digest, ctx.get('user'), now_iso()))
-        _event(db, ctx['task_id'], 'compile', f'发布版本 {version} sha256={digest[:16]}…')
+        task = db.execute('SELECT export_dir FROM tasks WHERE id=?', (ctx['task_id'],)).fetchone()
+    out = Path(task['export_dir']) if task and task['export_dir'] else _exports_dir(ctx['task_id'])
+    source = Path(str(out) + '.tar.gz')
+    if not source.is_file() or not (out / 'manifest.json').is_file():
+        raise RuntimeError('找不到完整导出产物，请重新执行打包节点')
+    digest = _file_sha256(source)
+    manifest = json.loads((out / 'manifest.json').read_text(encoding='utf8'))
+    progress(30, '校验独立导出快照')
+    with db_session() as db:
+        db.execute('BEGIN IMMEDIATE')
+        existing = db.execute('SELECT version, manifest, bundle_path FROM versions WHERE source_bundle=?', (str(source),)).fetchone()
+        if existing:
+            bundle = Path(existing['bundle_path'])
+            if not bundle.is_file() or _file_sha256(bundle) != existing['manifest']:
+                raise RuntimeError('已发布版本文件缺失或校验失败，禁止覆盖')
+            version = existing['version']
+            digest = existing['manifest']
+        else:
+            rows = db.execute('SELECT version FROM versions WHERE dataset=?', (str(p),)).fetchall()
+            numbers = []
+            for row in rows:
+                try:
+                    numbers.append(int(row['version'].lstrip('Vv').split('.')[0]))
+                except (ValueError, AttributeError):
+                    pass
+            number = max(numbers, default=0) + 1
+            parent = data_root() / '.platform' / 'releases' / hashlib.sha256(str(p).encode()).hexdigest()[:16]
+            parent.mkdir(parents=True, exist_ok=True)
+            while True:
+                version = f'V{number}.0'
+                release = parent / version
+                try:
+                    release.mkdir()
+                    break
+                except FileExistsError:
+                    number += 1
+            # Only new paths are written. A failed attempt leaves its directory reserved.
+            shutil.copytree(out, release / 'snapshot')
+            bundle = release / 'dataset.tar.gz'
+            with source.open('rb') as src, bundle.open('xb') as dst:
+                shutil.copyfileobj(src, dst)
+            if _file_sha256(bundle) != digest:
+                raise RuntimeError('版本导出校验失败')
+            db.execute(
+                'INSERT INTO versions(dataset,dataset_name,version,note,episodes,size_gb,status,task_id,manifest,created_by,created_at,bundle_path,source_bundle) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                (str(p), p.name, version, f'任务 {ctx["task_id"]} · {ctx["name"]}', int(manifest['episodes']), round(bundle.stat().st_size / 1024**3, 6),
+                 '已发布', ctx['task_id'], digest, ctx.get('user'), now_iso(), str(bundle), str(source)))
+            _event(db, ctx['task_id'], 'compile', f'发布独立版本 {version} sha256={digest[:16]}…')
     progress(100, f'已发布 {version} · sha256 {digest[:16]}…')
-    return {'version': version, 'sha256': digest}
+    return {'version': version, 'sha256': digest, 'bundle': str(bundle)}
 
 
 NODE_RUNNERS = {'preprocess': _node_preprocess, 'qc': _node_qc,
@@ -367,7 +423,7 @@ def _run_task(task_id: int):
                 with db_session() as db:
                     db.execute("UPDATE task_nodes SET status='blocked', message=?,"
                                ' started_at=COALESCE(started_at, ?) WHERE task_id=? AND key=?',
-                               ('等待人工标注完成', now_iso(), task_id, n['key']))
+                               ('等待审核负责人查看视频并确认质检' if n['key'] == 'qc' else '等待人工标注完成', now_iso(), task_id, n['key']))
                     db.execute("UPDATE tasks SET status='waiting_human', current_node=?,"
                                ' updated_at=? WHERE id=?', (n['key'], now_iso(), task_id))
                     _event(db, task_id, n['key'], '人工节点已就绪,等待人工完成', 'warn')
@@ -596,19 +652,41 @@ def retry_task(request: Request, task_id: int, payload: dict = None):
 @router.post('/api/bridge/tasks/{task_id}/nodes/{key}/complete')
 def complete_node(request: Request, task_id: int, key: str, payload: dict = None):
     user = require(request)
-    _task_or_404(task_id)
+    payload = payload or {}
+    decision = payload.get('decision', 'approved')
+    if decision not in ('approved', 'rejected') or (key != 'qc' and decision != 'approved'):
+        raise HTTPException(400, '质检决定无效')
+    reason = str(payload.get('reason') or '').strip()
+    if decision == 'rejected' and (not reason or len(reason) > 500):
+        raise HTTPException(400, '请填写质检打回原因，最多500字符')
     with db_session() as db:
-        node = db.execute('SELECT * FROM task_nodes WHERE task_id=? AND key=?',
-                          (task_id, key)).fetchone()
-        if node is None:
-            raise HTTPException(404, '节点不存在')
-        if key not in HUMAN_NODES:
+        db.execute('BEGIN IMMEDIATE')
+        task = db.execute('SELECT * FROM tasks WHERE id=?', (task_id,)).fetchone()
+        if task is None:
+            raise HTTPException(404, '任务不存在')
+        node = db.execute('SELECT * FROM task_nodes WHERE task_id=? AND key=?', (task_id, key)).fetchone()
+        if node is None or key not in HUMAN_NODES:
             raise HTTPException(400, '只有人工节点需要手动完成')
-        db.execute("UPDATE task_nodes SET status='done', progress=100, message=?, finished_at=?"
-                   ' WHERE task_id=? AND key=?',
-                   (f'由 {user["username"]} 确认完成', now_iso(), task_id, key))
-        _event(db, task_id, key, f'人工节点由 {user["username"]} 确认完成', actor=user['username'])
-        db.execute("UPDATE tasks SET status='pending', updated_at=? WHERE id=?", (now_iso(), task_id))
+        if task['status'] != 'waiting_human' or task['current_node'] != key or node['status'] != 'blocked':
+            raise HTTPException(409, '任务当前不在这个人工节点，不能重复确认或跳过流程')
+        pending = db.execute("SELECT COUNT(*) FROM task_nodes WHERE task_id=? AND seq<? AND status!='done'", (task_id, node['seq'])).fetchone()[0]
+        if pending:
+            raise HTTPException(409, '前置节点尚未完成')
+        owner = task['reviewer'] if key == 'qc' else task['assignee']
+        if user['role'] != 'admin':
+            if user['username'] != owner or (key == 'qc' and user['role'] != 'reviewer'):
+                raise HTTPException(403, '只有任务指定负责人或管理员可确认该节点')
+        if decision == 'rejected':
+            annotate = db.execute("SELECT seq FROM task_nodes WHERE task_id=? AND key='annotate'", (task_id,)).fetchone()
+            seq = annotate['seq'] if annotate else node['seq']
+            db.execute("UPDATE task_nodes SET status='waiting',progress=0,message=NULL,started_at=NULL,finished_at=NULL WHERE task_id=? AND seq>=?", (task_id, seq))
+            db.execute("UPDATE tasks SET status='pending',current_node=NULL,progress=?,updated_at=? WHERE id=?", (int(100*seq/max(1,db.execute('SELECT COUNT(*) FROM task_nodes WHERE task_id=?',(task_id,)).fetchone()[0])), now_iso(), task_id))
+            _event(db, task_id, key, f'质检打回：{reason}', 'warn', actor=user['username'])
+        else:
+            message = ('视频质检通过' if key == 'qc' else '人工标注完成') + f' · {user["username"]}'
+            db.execute("UPDATE task_nodes SET status='done',progress=100,message=?,finished_at=? WHERE task_id=? AND key=?", (message, now_iso(), task_id, key))
+            db.execute("UPDATE tasks SET status='pending',updated_at=? WHERE id=?", (now_iso(), task_id))
+            _event(db, task_id, key, message, actor=user['username'])
     enqueue(task_id)
     return get_task(request, task_id)
 

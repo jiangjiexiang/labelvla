@@ -46,7 +46,9 @@ export async function fetchServerDatasets(
   return data.datasets ?? [];
 }
 
-export async function connectServerDataset(
+let serverOpenQueue: Promise<unknown> = Promise.resolve();
+
+async function openServerDataset(
   dataset: string,
   initialize: (source: DataSource) => Promise<void>,
   setAnnotationDataset?: (path: string) => void,
@@ -67,4 +69,15 @@ export async function connectServerDataset(
     setAnnotationDataset?.(dataset);
   }
   return { name: dataset.split('/').filter(Boolean).pop() || dataset };
+}
+
+// Serialize server opens: two buttons must not dispose each other's loader.
+export function connectServerDataset(
+  dataset: string,
+  initialize: (source: DataSource) => Promise<void>,
+  setAnnotationDataset?: (path: string) => void,
+): Promise<{ name: string }> {
+  const opened = serverOpenQueue.catch(() => {}).then(() => openServerDataset(dataset, initialize, setAnnotationDataset));
+  serverOpenQueue = opened;
+  return opened;
 }

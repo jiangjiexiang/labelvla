@@ -25,10 +25,9 @@ export function StatusBar() {
     setReason('');
   };
   const skip = async () => {
-    const value = a.status.skipped ? '' : window.prompt('为什么这条数据不适合标注？（必填，最多500字符）');
-    if (value === null) return;
+    if (!window.confirm(a.status.skipped ? '确认恢复这条数据的标注？' : '确认将这条数据设为不可用并跳过标注？原始数据和已有标注会保留。')) return;
     setSkipBusy(true); setSkipError('');
-    try { await a.setSkipped(!a.status.skipped, value); }
+    try { await a.setSkipped(!a.status.skipped); }
     catch (e) { setSkipError(e instanceof Error ? e.message : String(e)); }
     finally { setSkipBusy(false); }
   };
@@ -46,7 +45,7 @@ export function StatusBar() {
       {st === 'rejected' && a.status.reject_reason && (
         <p className="m-0 break-all text-[11px] text-red-500">打回原因:{a.status.reject_reason}</p>
       )}
-      {a.status.skipped && <p className="text-[11px] text-amber-600">跳过原因：{a.status.skip_reason} · {a.status.skip_by}</p>}
+      {a.status.skipped && <p className="text-[11px] text-amber-600">{a.status.skip_reason ? `跳过原因：${a.status.skip_reason} · ` : ''}操作人：{a.status.skip_by}</p>}
       {skipError && <p role="alert" className="text-[11px] text-red-500">{skipError}</p>}
       <div className="flex flex-wrap gap-1">
         {a.platformReady && (st !== 'approved' || a.canReview) && <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={skipBusy || a.dirty} onClick={() => void skip()}>{skipBusy ? '处理中…' : a.status.skipped ? '恢复标注' : '数据不可用，跳过标注'}</Button>}

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronRight, Download, GitBranch, Play, Plus, RefreshCw, Search, X,
+  ArrowLeft, ArrowRight, ChevronRight, Play, Plus, RefreshCw, Search, X,
 } from 'lucide-react';
 import {
   api, NODE_STATUS_LABEL, STATUS_LABEL, TASK_STATUS_LABEL, TASK_TYPE_OPTIONS,
   type User, type EpisodeRow, type Task, type TaskDetail, type TaskStats, type VersionRow, type VideoRow,
 } from './api';
 import { usePage, useSelection } from './usePage';
+import { useAuth } from './authStore';
 import { useLeRobotData, useLeRobotSelection } from '../../../react/contexts/LeRobotContext';
 import { useAnnotation } from '../../annotation/AnnotationContext';
 import { connectServerDataset } from '../serverDataset';
@@ -382,7 +383,7 @@ export function TaskCreatePage() {
                 <span>✓</span>
                 <div>
                   <strong>{item}</strong>
-                  <small>{item === '人工标注' ? '需要人工完成,任务在此暂停' : '自动执行'}</small>
+                  <small>{(item === '人工标注' || item === '质检') ? '需要负责人确认，任务在此暂停' : '自动执行'}</small>
                 </div>
               </label>
             ))}
@@ -403,6 +404,7 @@ export function TaskCreatePage() {
 // ── 任务详情 ──────────────────────────────────────────────
 
 export function TaskDetailPage() {
+  const { user } = useAuth();
   const [, setPage] = usePage();
   const [selection] = useSelection();
   const taskId = selection.taskId;
@@ -484,7 +486,7 @@ export function TaskDetailPage() {
       {error && <Notice kind="error">{error}</Notice>}
       {task.error && <Notice kind="error">执行失败:{task.error}</Notice>}
       {task.status === 'waiting_human' && (
-        <Notice kind="info">任务在「人工标注」节点暂停,标注完成后点击节点里的按钮继续执行后续节点。</Notice>
+        <Notice kind="info">任务在「{task.current_node === 'qc' ? '标注质检' : '人工标注'}」节点暂停，由指定负责人检查并确认后，才会继续后续节点。</Notice>
       )}
 
       <section className="g-card g-detail-overview">
@@ -552,6 +554,13 @@ export function TaskDetailPage() {
                 </button>
               )}
             </summary>
+            {node.key === 'qc' && node.status === 'blocked' && <div className="flex flex-wrap gap-2 p-3">
+              <EnterAnnotation dataset={task.dataset}>查看视频质检</EnterAnnotation>
+              {(user?.role === 'admin' || (user?.role === 'reviewer' && user.username === task.reviewer)) && <>
+                <button className="g-button g-primary" disabled={busy} onClick={() => { if (window.confirm('确认已检查视频，质检通过并继续打包发布？')) void act(() => api.completeNode(task.id, 'qc')); }}>质检通过</button>
+                <button className="g-button" disabled={busy} onClick={() => { const reason = window.prompt('质检打回原因（必填）'); if (reason?.trim()) void act(() => api.completeNode(task.id, 'qc', 'rejected', reason.trim())); }}>打回重标</button>
+              </>}
+            </div>}
             <div className="g-node-detail">
               <div>
                 <h3>执行进度</h3>
@@ -811,29 +820,14 @@ export function VersionsPage() {
 
   return (
     <div className="g-page">
-      <Heading eyebrow="系统管理" title="版本管理" description="任务的「应用编译」节点会产出真实版本记录">
+      <div className="flex justify-end">
         <button className="g-button" onClick={() => void load()}><RefreshCw />刷新</button>
-      </Heading>
+      </div>
 
       {error && <Notice kind="error">{error}</Notice>}
 
       {latest ? (
-        <section className="g-card g-version-hero">
-          <GitBranch />
-          <div>
-            <span>最新发布版本</span>
-            <h2>{latest.dataset_name} <strong>{latest.version}</strong></h2>
-            <p>{latest.note || '由任务编译节点自动发布'}</p>
-          </div>
-          <dl>
-            <div><dt>Episodes</dt><dd>{latest.episodes}</dd></div>
-            <div><dt>数据大小</dt><dd>{latest.size_gb ?? 0} GB</dd></div>
-            <div><dt>状态</dt><dd>{latest.status}</dd></div>
-          </dl>
-          <button className="g-button" disabled title="产物位于服务器 /data/.platform/exports">
-            <Download />产物在服务器
-          </button>
-        </section>
+        <section className="g-card p-4"><h2 className="m-0 text-base font-semibold">{latest.dataset_name}</h2></section>
       ) : (
         <Empty>还没有版本。跑一个带「应用编译」节点的任务即可生成。</Empty>
       )}

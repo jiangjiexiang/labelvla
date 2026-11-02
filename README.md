@@ -39,7 +39,6 @@ labelvla-docker/
 │       ├── bridge.py
 │       └── bridge_ext/   # 登录、台账、审核、词典、质检、任务等
 ├── labelVLA-main/        # LabelVLA 基础代码
-├── web-static/           # 平台静态页面与原型资源
 ├── data/                 # 数据集与运行数据（Git 忽略）
 └── docs/                 # 部署、设计及接口文档
 ```

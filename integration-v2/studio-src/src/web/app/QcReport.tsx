@@ -83,10 +83,21 @@ export function QcReport() {
     finally { setJumping(''); }
   };
 
+  const reviewVideo = async () => {
+    if (!dataset) return;
+    setJumping('video'); setError('');
+    try {
+      await connectServerDataset(dataset, initialize, annotation?.setDataset);
+      await selectEpisode(0);
+      setPage(null);
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setJumping(''); }
+  };
   return (
     <div className="flex flex-col gap-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold">质检报告</span>
+        <Button size="sm" variant="outline" disabled={!dataset || !!jumping} onClick={() => void reviewVideo()}>{jumping === 'video' ? '加载视频…' : '查看视频质检'}</Button>
         <select
           className="h-8 w-full min-w-0 rounded-md border border-input bg-background px-2 text-xs sm:w-auto"
           value={dataset}

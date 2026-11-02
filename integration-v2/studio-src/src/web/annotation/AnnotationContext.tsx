@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLeRobotData, useLeRobotPlayback, useLeRobotSelection } from '../../react/contexts/LeRobotContext';
 import { getVisualFeatureNames } from '@/core';
-import { ApiError, DICT_KINDS, fetchBoard, fetchDict, fetchStatus, postDictWord, postStatus, type DictKind, type EpisodeStatus, type StatusRecord, type UserInfo } from './platformApi';
+import { ApiError, DICT_KINDS, fetchBoard, fetchDict, fetchStatus, postDictWord, postStatus, postSkip, type DictKind, type EpisodeStatus, type StatusRecord, type UserInfo } from './platformApi';
 import { useAuth } from '../app/platform/authStore';
 
 export type { DictKind, EpisodeStatus, StatusRecord, UserInfo } from './platformApi';
@@ -29,6 +29,7 @@ type Context = {
   samMaskUrl: (frame: number) => string | null;
   // ── 平台化:登录用户 / episode 状态机 / 数据字典 / 问题标注 ──
   user: UserInfo | null; platformReady: boolean; readOnly: boolean; canReview: boolean;
+  setSkipped: (skipped: boolean, reason?: string) => Promise<void>;
   status: StatusRecord; setStatus: (next: EpisodeStatus, reason?: string) => Promise<void>;
   statusBoard: Record<number, EpisodeStatus>;
   dict: Record<DictKind, string[]>; addDictWord: (kind: DictKind, word: string) => void;
@@ -67,7 +68,7 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
   const [statusBoard, setStatusBoard] = useState<Record<number, EpisodeStatus>>({});
   const [dict, setDict] = useState<Record<DictKind, string[]>>({skill: [], object: [], target: [], adverb: []});
   // 审核员全程只读;标注员在「已通过」后不可再改(审核员可打回解锁)
-  const readOnly = user?.role === 'reviewer' || (user?.role === 'annotator' && statusRec.status === 'approved');
+  const readOnly = !!statusRec.skipped || user?.role === 'reviewer' || (user?.role === 'annotator' && statusRec.status === 'approved');
   const canReview = user?.role === 'reviewer' || user?.role === 'admin';
   // 当前 episode 状态:随 episode 加载重新拉取,失败退回 untagged(本地模式)
   useEffect(() => {
@@ -91,6 +92,13 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
     });
     return () => { dead = true; };
   }, [dataset]);
+  const setSkipped = async (skipped: boolean, reason?: string) => {
+    if (!dataset || episode === null) return;
+    if (dirty) throw new Error('请先保存或处理未保存的标注，再跳过数据');
+    const result = await postSkip(dataset, episode, skipped, reason);
+    setStatusRec(result);
+    refreshBoard();
+  };
   const setStatus = async (next: EpisodeStatus, reason?: string) => {
     if (!dataset || episode === null) return;
     const prev = statusRec;
@@ -317,7 +325,7 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
     samReset(); setSamStatus('已放弃该对象,可重新点选');
   };
   const sam: SamState = {mode: samMode, busy: samBusy, status: samStatus, objectId: samObjectId, promptFrame: samPromptFrame, propagated: samPropagated, progress: samProgress, points: samPoints, bbox: samBBox, camera: samCam};
-  const value = useMemo(() => ({dataset,setDataset,episode,currentEpisode:selectedEpisodeIndex,frame:currentFrameIndex,length,segments,selected,select,selectedBox,selectBox,boxLabel,setBoxLabel,dirty,error,saving,track,setTrack,update,save,pause:()=>setPlaying(false),jump:(frame:number)=>{setPlaying(false);setFrameIndex(frame);},cameras,sam,setSamMode,setSamCamera,samPoint,samPropagate,samDiscard,samMaskUrl,showMasks,setShowMasks,user,platformReady,readOnly,canReview,status:statusRec,setStatus,statusBoard,dict,addDictWord,markProblem,fixProblem}), [dataset,episode,selectedEpisodeIndex,currentFrameIndex,length,segments,selected,selectedBox,boxLabel,dirty,error,saving,track,revision,setFrameIndex,setPlaying,samMode,samBusy,samStatus,samObjectId,samPromptFrame,samPropagated,samProgress,samPoints,samBBox,samCam,cameras,samMaskVersion,showMasks,user,platformReady,readOnly,canReview,statusRec,statusBoard,dict]);
+  const value = useMemo(() => ({dataset,setDataset,episode,currentEpisode:selectedEpisodeIndex,frame:currentFrameIndex,length,segments,selected,select,selectedBox,selectBox,boxLabel,setBoxLabel,dirty,error,saving,track,setTrack,update,save,pause:()=>setPlaying(false),jump:(frame:number)=>{setPlaying(false);setFrameIndex(frame);},cameras,sam,setSamMode,setSamCamera,samPoint,samPropagate,samDiscard,samMaskUrl,showMasks,setShowMasks,user,platformReady,readOnly,canReview,status:statusRec,setStatus,setSkipped,statusBoard,dict,addDictWord,markProblem,fixProblem}), [dataset,episode,selectedEpisodeIndex,currentFrameIndex,length,segments,selected,selectedBox,boxLabel,dirty,error,saving,track,revision,setFrameIndex,setPlaying,samMode,samBusy,samStatus,samObjectId,samPromptFrame,samPropagated,samProgress,samPoints,samBBox,samCam,cameras,samMaskVersion,showMasks,user,platformReady,readOnly,canReview,statusRec,statusBoard,dict]);
   const ranges = useMemo(() => ({segments, selected, active: !!dataset && episode !== null && episode === selectedEpisodeIndex}), [segments,selected,dataset,episode,selectedEpisodeIndex]);
   return <AnnotationRangesContext.Provider value={ranges}><AnnotationContext.Provider value={value}>{children}</AnnotationContext.Provider></AnnotationRangesContext.Provider>;
 }

@@ -4,13 +4,13 @@ import { QcReport } from '../QcReport';
 import { Users } from '../Users';
 import { EpisodesPage, TaskCreatePage, TaskDetailPage, TasksPage, VersionsPage, VideosPage } from './GeneralPages';
 import { PlatformNav } from './PlatformNav';
-import { usePage } from './usePage';
+import { getStudioReturnPage, usePage } from './usePage';
 import './platform-general.css';
 
 export function PlatformPages() {
   const [page, setPage] = usePage();
   if (!page) {
-    return <button className="g-return-platform" onClick={() => setPage('dashboard')}>数据平台 →</button>;
+    return <button className="g-return-platform" onClick={() => setPage(getStudioReturnPage())}>← 返回数据平台</button>;
   }
   return (
     <div className="g-platform">

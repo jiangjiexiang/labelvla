@@ -14,7 +14,7 @@ def _user_dict(row):
             'display_name': row['display_name'], 'role': row['role'],
             'disabled': bool(row['disabled']), 'expires_at': row['expires_at'],
             'created_by': row['created_by'], 'created_at': row['created_at'],
-            'last_login': row['last_login']}
+            'last_login': row['last_login'], 'dingtalk_userid': row['dingtalk_userid']}
 
 
 def _get_user(uid: int):
@@ -43,6 +43,17 @@ def _check_username(username: str):
 
 
 def register(app):
+    @app.post('/api/bridge/users/{uid}/dingtalk')
+    @require_role('admin')
+    def bind_dingtalk(uid: int, payload: dict, request: Request):
+        _get_user(uid)
+        value = payload.get('dingtalk_userid', '')
+        if not isinstance(value, str) or len(value) > 128 or any(c.isspace() for c in value):
+            raise HTTPException(400, '请输入有效的钉钉 UserID（无空格，最多128字符）')
+        with get_db() as conn:
+            conn.execute('UPDATE users SET dingtalk_userid=? WHERE id=?', (value, uid))
+        return {'ok': True}
+
     @app.get('/api/bridge/users')
     @require_role()
     def list_users(request: Request):

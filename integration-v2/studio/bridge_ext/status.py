@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Request
 
 from .common import db_session, now_iso, require, safe_dataset
 
+from .exclusions import fields, excluded, set_exclusion, init_schema
+
 router = APIRouter()
 
 STATUSES = ('untagged', 'labeling', 'review', 'approved', 'rejected')
@@ -25,9 +27,9 @@ def _row(db, dataset: str, episode: int):
 
 
 def _public(r) -> dict:
-    return {k: r[k] for k in
+    return {**fields(r['dataset'], r['episode']), **{k: r[k] for k in
             ('dataset', 'episode', 'status', 'assignee', 'reviewer',
-             'reject_reason', 'updated_at', 'updated_by')}
+             'reject_reason', 'updated_at', 'updated_by')}}
 
 
 @router.get('/api/bridge/status')
@@ -37,7 +39,7 @@ def status_get(request: Request, dataset: str, episode: int):
     with db_session() as db:
         r = _row(db, str(p), episode)
     if not r:
-        return {'dataset': str(p), 'episode': episode, 'status': 'untagged',
+        return {**fields(str(p), episode), 'dataset': str(p), 'episode': episode, 'status': 'untagged',
                 'assignee': None, 'reviewer': None, 'reject_reason': None,
                 'updated_at': None, 'updated_by': None}
     return _public(r)
@@ -74,6 +76,8 @@ def status_set(request: Request, payload: dict):
     except HTTPException:
         raise HTTPException(404, '片段不存在')
 
+    if episode in excluded(str(p)):
+        raise HTTPException(409, '该数据已跳过，请先恢复标注')
     flow = REVIEWER_FLOW if user['role'] in ('admin', 'reviewer') else ANNOTATOR_FLOW
     with db_session() as db:
         cur = _row(db, str(p), episode)
@@ -100,5 +104,24 @@ def status_set(request: Request, payload: dict):
     return _public(r)
 
 
+@router.post('/api/bridge/status/skip')
+def skip_episode(request: Request, payload: dict):
+    user = require(request, 'admin', 'reviewer', 'annotator')
+    p = safe_dataset(str(payload.get('dataset') or ''))
+    try:
+        episode = int(payload.get('episode', -1))
+    except (TypeError, ValueError):
+        raise HTTPException(400, 'Episode 无效')
+    import bridge
+    bridge.segment_store(str(p), episode)
+    with db_session() as db:
+        row = _row(db, str(p), episode)
+    if row and row['status'] == 'approved' and user['role'] == 'annotator':
+        raise HTTPException(403, '已通过的数据需要审核员处理')
+    set_exclusion(str(p), episode, payload.get('skipped'), payload.get('reason'), user['username'])
+    return status_get(request, str(p), episode)
+
+
 def register(app):
+    init_schema()
     app.include_router(router)

@@ -1,8 +1,8 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
-import { Badge, Button, Input, Tabs, TabsList, TabsTrigger } from '@/ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Tabs, TabsList, TabsTrigger } from '@/ui';
 import { api, STATUS_LABEL, type DatasetRow, type EpisodeStatus } from './platform/api';
 import { groupDatasets } from './platform/datasetGroups';
+import { usePage, useSelection } from './platform/usePage';
 
 const STATUS_COLOR: Record<EpisodeStatus, string> = {
   untagged: 'bg-zinc-400', labeling: 'bg-blue-500', review: 'bg-amber-500',
@@ -48,12 +48,17 @@ function QcBadges({ qc }: { qc: DatasetRow['qc'] }) {
 }
 
 export function DatasetList() {
+  const [, setPage] = usePage();
+  const [, setSelection] = useSelection();
+  const [viewFolder, setViewFolder] = useState<string | null>(null);
   const [rows, setRows] = useState<DatasetRow[]>([]);
+  const [tagTarget, setTagTarget] = useState<DatasetRow | null>(null);
+  const [tagDraft, setTagDraft] = useState('');
+  const robotTags = useMemo(() => [...new Set(rows.map((row) => row.robot_tag).filter((tag): tag is string => !!tag))].sort(), [rows]);
   const [trash, setTrash] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
   const [q, setQ] = useState(readFilter());
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set());
 
   const load = useCallback(async (trashMode: boolean) => {
     setError('');
@@ -75,7 +80,7 @@ export function DatasetList() {
     window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
   };
 
-  // 先筛选原始 part 行,再聚合;这样搜索 subtask1_50 能命中整个项目。
+  // 按父目录聚合 part，数据管理展示逻辑数据集。
   const filteredRows = useMemo(() => {
     const kw = q.trim().toLowerCase();
     if (!kw) return rows;
@@ -86,8 +91,13 @@ export function DatasetList() {
     if (trash) {
       return filteredRows.map((row) => ({ kind: 'dataset' as const, key: row.path, row }));
     }
-    return groupDatasets(filteredRows);
-  }, [filteredRows, trash]);
+    const grouped = groupDatasets(filteredRows);
+    if (viewFolder) {
+      const entry = groupDatasets(rows).find((item) => item.key === viewFolder);
+      if (entry?.kind === 'group') return entry.group.rows.map((row) => ({ kind: 'dataset' as const, key: row.path, row }));
+    }
+    return grouped;
+  }, [filteredRows, trash, viewFolder, rows]);
 
   const totals = useMemo(() => {
     let size: number | null = 0;
@@ -104,11 +114,19 @@ export function DatasetList() {
     return { size, episodes, annotated, approved };
   }, [filteredRows]);
 
-  const editRobotTag = async (row: DatasetRow) => {
-    const tag = window.prompt('机器人标签（例如 SO100、ALOHA；留空清除）', row.robot_tag || '');
-    if (tag === null) return;
+  const editRobotTag = (row: DatasetRow) => { setTagTarget(row); setTagDraft(row.robot_tag || ''); };
+
+  const saveRobotTag = async () => {
+    if (!tagTarget) return;
+    const row = tagTarget;
+    const tag = tagDraft.trim();
     setBusy(row.path);
-    try { await api.setRobotTag(row.path, tag); await load(trash); }
+    try {
+      const entry = groupDatasets(rows).find((item) => item.key === row.path);
+      const paths = entry?.kind === 'group' ? entry.group.rows.map((part) => part.path) : [row.path];
+      for (const path of paths) await api.setRobotTag(path, tag);
+      await load(trash); setTagTarget(null);
+    }
     catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(''); }
   };
@@ -116,7 +134,12 @@ export function DatasetList() {
   const removeDataset = async (path: string) => {
     if (!window.confirm(`确认删除 ${path}?\n数据移入回收站,标注保留,可恢复。`)) return;
     setBusy(path);
-    try { await api.deleteDataset(path); await load(trash); }
+    try {
+      const entry = groupDatasets(rows).find((item) => item.key === path);
+      const paths = entry?.kind === 'group' ? entry.group.rows.map((part) => part.path) : [path];
+      for (const target of paths) await api.deleteDataset(target);
+      await load(trash);
+    }
     catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(''); }
   };
@@ -135,13 +158,10 @@ export function DatasetList() {
     finally { setBusy(''); }
   };
 
-  const toggleGroup = (key: string) => {
-    setExpandedGroups((current) => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  const viewDataset = (row: DatasetRow) => {
+    const entry = groupDatasets(rows).find((item) => item.key === row.path);
+    if (entry?.kind === 'group') { setViewFolder(row.path); return; }
+    setSelection({ dataset: row.path }); setPage('episodes');
   };
 
   const renderDatasetRow = (row: DatasetRow, child = false) => {
@@ -150,12 +170,15 @@ export function DatasetList() {
       <tr key={row.path} className={`border-t border-border hover:bg-muted/30 ${child ? 'bg-muted/10' : ''}`}>
         <td className={`px-3 py-2 ${child ? 'pl-10' : ''}`}>
           <div className={child ? 'border-l border-border pl-3' : ''}>
-            <span className="font-medium">{row.name}</span>
-            <div className="max-w-[280px] truncate text-[10px] text-muted-foreground">{row.path}</div>
-            <div className="mt-1 flex items-center gap-2">
-              <Badge variant="secondary">{row.robot_tag || '未设置机器人'}</Badge>
-              {!trash && <button className="text-primary text-[11px]" disabled={isBusy} onClick={() => void editRobotTag(row)}>编辑标签</button>}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button type="button" className="font-medium text-primary hover:underline" disabled={trash} onClick={() => viewDataset(row)}>{row.name}</button>
+              {trash ? (row.robot_tag && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{row.robot_tag}</Badge>) : (
+                <button type="button" disabled={isBusy} onClick={() => void editRobotTag(row)} title="编辑机器人标签" aria-label={`编辑 ${row.name} 的机器人标签`} className="inline-flex items-center rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] leading-none text-blue-600 hover:bg-blue-100">
+                  {row.robot_tag || '+ tag'}
+                </button>
+              )}
             </div>
+            <div className="max-w-[280px] truncate text-[10px] text-muted-foreground">{row.path}</div>
           </div>
         </td>
         <td className="px-3 py-2 text-right tabular-nums">{row.episodes}</td>
@@ -202,6 +225,11 @@ export function DatasetList() {
 
       {error && <p className="m-0 text-xs text-destructive">{error}</p>}
 
+      {viewFolder && !trash && <div className="flex items-center gap-3">
+        <Button size="sm" variant="outline" onClick={() => setViewFolder(null)}>返回数据集</Button>
+        <strong>{viewFolder.split('/').pop()}</strong>
+        <span className="text-xs text-muted-foreground">内部数据分片，点击名称查看 Episode 和视频</span>
+      </div>}
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-xs">
           <thead className="bg-muted/50 text-muted-foreground">
@@ -221,49 +249,8 @@ export function DatasetList() {
               if (entry.kind === 'dataset') return renderDatasetRow(entry.row);
 
               const group = entry.group;
-              const isExpanded = expandedGroups.has(group.key);
-              return (
-                <Fragment key={group.key}>
-                  <tr className="border-t border-border bg-muted/20 hover:bg-muted/30">
-                    <td className="px-3 py-2">
-                      <div className="flex items-start gap-1.5">
-                        <button
-                          type="button"
-                          className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm hover:bg-muted"
-                          onClick={() => toggleGroup(group.key)}
-                          aria-expanded={isExpanded}
-                          aria-label={`${isExpanded ? '收起' : '展开'}项目 ${group.name}`}
-                          title={isExpanded ? '收起项目' : '展开项目'}
-                        >
-                          <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                        </button>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 font-medium">
-                            {group.name}
-                            {[...new Set(group.rows.map((row) => row.robot_tag).filter(Boolean))].map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{group.part_count} 个 part</Badge>
-                          </div>
-                          <div className="max-w-[280px] truncate text-[10px] text-muted-foreground">{group.path}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{group.episodes}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{group.hours.toFixed(1)}h</td>
-                    <td className={`px-3 py-2 text-right tabular-nums ${group.size_gb === null ? 'text-muted-foreground' : ''}`} title={group.size_gb === null ? '部分 part 的容量仍在扫描' : undefined}>
-                      {formatSize(group.size_gb)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{group.cameras}</td>
-                    <td className="px-3 py-2"><StatusProgress episodes={group.episodes} counts={group.counts} /></td>
-                    <td className="px-3 py-2"><QcBadges qc={group.qc} /></td>
-                    <td className="px-3 py-2 text-right">
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground" onClick={() => toggleGroup(group.key)} aria-expanded={isExpanded}>
-                        {isExpanded ? '收起' : '展开'}
-                      </Button>
-                    </td>
-                  </tr>
-                  {isExpanded && group.rows.map((row) => renderDatasetRow(row, true))}
-                </Fragment>
-              );
+              const tags = [...new Set(group.rows.map((row) => row.robot_tag).filter(Boolean))];
+              return renderDatasetRow({ ...group, robot_tag: tags.length === 1 ? tags[0] : undefined });
             })}
             {entries.length === 0 && (
               <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
@@ -275,12 +262,29 @@ export function DatasetList() {
       </div>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span>共 {entries.length} 个项目 / {filteredRows.length} 个数据集</span>
+        <span>共 {entries.length} 个数据集</span>
         <span>容量合计 {totals.size === null ? '扫描中…' : `${totals.size.toFixed(2)} GB`}</span>
         <span>episode 合计 {totals.episodes}</span>
         <span>已提交审核 {totals.annotated}</span>
         <span>已通过 {totals.approved}</span>
       </div>
+      <Dialog open={!!tagTarget} onOpenChange={(open) => { if (!open) setTagTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>机器人标签</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">{tagTarget?.name}</p>
+          <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); void saveRobotTag(); }}>
+            <Input aria-label="机器人标签" placeholder="输入新标签，或点击下方已有标签" maxLength={80} value={tagDraft} onChange={(e) => setTagDraft(e.target.value)} />
+            {robotTags.length > 0 && <div className="flex flex-wrap gap-2">{robotTags.map((tag) => (
+              <Button key={tag} type="button" size="sm" variant={tagDraft === tag ? 'secondary' : 'outline'} onClick={() => setTagDraft(tag)}>{tag}</Button>
+            ))}</div>}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setTagDraft('')}>清除</Button>
+              <Button type="button" variant="outline" onClick={() => setTagTarget(null)}>取消</Button>
+              <Button type="submit" disabled={!!busy}>{busy ? '保存中…' : '保存'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -13,6 +13,8 @@ export function StatusBar() {
   const a = useAnnotation();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
+  const [skipError, setSkipError] = useState('');
+  const [skipBusy, setSkipBusy] = useState(false);
   if (!a || !a.dataset || a.episode === null || a.episode !== a.currentEpisode) return null;
   const st = a.status.status;
   const role = a.user?.role;
@@ -22,11 +24,19 @@ export function StatusBar() {
     setRejecting(false);
     setReason('');
   };
+  const skip = async () => {
+    const value = a.status.skipped ? '' : window.prompt('为什么这条数据不适合标注？（必填，最多500字符）');
+    if (value === null) return;
+    setSkipBusy(true); setSkipError('');
+    try { await a.setSkipped(!a.status.skipped, value); }
+    catch (e) { setSkipError(e instanceof Error ? e.message : String(e)); }
+    finally { setSkipBusy(false); }
+  };
   return (
     <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 px-2 py-1.5">
       <div className="flex items-center gap-1.5">
         <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor: STATUS_COLORS[st]}} />
-        <span className="text-[11px] font-medium">{STATUS_LABELS[st]}</span>
+        <span className="text-[11px] font-medium">{a.status.skipped ? '已跳过标注' : STATUS_LABELS[st]}</span>
         {a.user && (
           <span className="ml-auto truncate text-[11px] text-muted-foreground">
             {a.user.username} · {ROLE_LABELS[a.user.role] ?? a.user.role}
@@ -36,7 +46,10 @@ export function StatusBar() {
       {st === 'rejected' && a.status.reject_reason && (
         <p className="m-0 break-all text-[11px] text-red-500">打回原因:{a.status.reject_reason}</p>
       )}
+      {a.status.skipped && <p className="text-[11px] text-amber-600">跳过原因：{a.status.skip_reason} · {a.status.skip_by}</p>}
+      {skipError && <p role="alert" className="text-[11px] text-red-500">{skipError}</p>}
       <div className="flex flex-wrap gap-1">
+        {a.platformReady && (st !== 'approved' || a.canReview) && <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={skipBusy || a.dirty} onClick={() => void skip()}>{skipBusy ? '处理中…' : a.status.skipped ? '恢复标注' : '数据不可用，跳过标注'}</Button>}
         {canAnnotate && st === 'untagged' && (
           <Button size="sm" className="h-6 px-2 text-[11px]" onClick={() => act('labeling')}>开始标注</Button>
         )}
@@ -46,7 +59,7 @@ export function StatusBar() {
         {canAnnotate && st === 'rejected' && (
           <Button size="sm" className="h-6 px-2 text-[11px]" onClick={() => act('review')}>修改后重新提交</Button>
         )}
-        {a.canReview && (st === 'review' || st === 'approved') && (
+        {!a.status.skipped && a.canReview && (st === 'review' || st === 'approved') && (
           <>
             {st === 'review' && (
               <Button size="sm" className="h-6 px-2 text-[11px]" onClick={() => act('approved')}>通过</Button>

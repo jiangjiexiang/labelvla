@@ -96,9 +96,18 @@ CREATE TABLE IF NOT EXISTS versions(
 
 
 def init_schema():
+    from .notifications import init_schema as init_notifications
+    init_notifications()
     with db_session() as db:
         db.executescript(_SCHEMA)
+        event_columns = {r['name'] for r in db.execute('PRAGMA table_info(task_events)')}
+        if 'actor' not in event_columns:
+            db.execute('ALTER TABLE task_events ADD COLUMN actor TEXT')
         columns = {r['name'] for r in db.execute('PRAGMA table_info(tasks)')}
+        if 'reviewer' not in columns:
+            db.execute('ALTER TABLE tasks ADD COLUMN reviewer TEXT')
+        if 'reviewer_name' not in columns:
+            db.execute('ALTER TABLE tasks ADD COLUMN reviewer_name TEXT')
         if 'assignee' not in columns:
             db.execute('ALTER TABLE tasks ADD COLUMN assignee TEXT')
         if 'assignee_name' not in columns:
@@ -111,9 +120,9 @@ def _dict(row):
     return dict(row) if row is not None else None
 
 
-def _event(db, task_id, node, message, level='info'):
-    db.execute('INSERT INTO task_events(task_id, at, node, level, message) VALUES (?,?,?,?,?)',
-               (task_id, now_iso(), node, level, message))
+def _event(db, task_id, node, message, level='info', actor='system'):
+    db.execute('INSERT INTO task_events(task_id, at, node, level, message, actor) VALUES (?,?,?,?,?,?)',
+               (task_id, now_iso(), node, level, message, actor))
 
 
 def _task_or_404(task_id: int):
@@ -181,7 +190,9 @@ def _node_qc(ctx, progress):
             shapes[cam] = (int(v['shape'][1]), int(v['shape'][0]))
 
     seg_dir = p / 'segments'
-    files = sorted(seg_dir.glob('episode_*.json')) if seg_dir.is_dir() else []
+    from .exclusions import excluded
+    skip_rows = excluded(str(p))
+    files = [f for f in sorted(seg_dir.glob('episode_*.json')) if int(f.stem.split('_')[1]) not in skip_rows] if seg_dir.is_dir() else []
     rows, failed = [], set()
     now = now_iso()
     for i, f in enumerate(files):
@@ -221,7 +232,9 @@ def _node_package(ctx, progress):
         old.unlink()
 
     seg_dir = p / 'segments'
-    files = sorted(seg_dir.glob('episode_*.json')) if seg_dir.is_dir() else []
+    from .exclusions import excluded
+    skip_rows = excluded(str(p))
+    files = [f for f in sorted(seg_dir.glob('episode_*.json')) if int(f.stem.split('_')[1]) not in skip_rows] if seg_dir.is_dir() else []
     copied, annotations = 0, 0
     for i, f in enumerate(files):
         try:
@@ -237,7 +250,7 @@ def _node_package(ctx, progress):
 
     manifest = {
         'task_id': ctx['task_id'], 'task_name': ctx['name'], 'dataset': str(p),
-        'episodes': copied, 'annotations': annotations,
+        'episodes': copied, 'annotations': annotations, 'skipped_episodes': list(skip_rows.values()),
         'generated_at': now_iso(), 'source': 'labelvla-studio',
     }
     (out / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=1),
@@ -249,7 +262,7 @@ def _node_package(ctx, progress):
         tar.add(seg_out, arcname='segments')
     size = tgz.stat().st_size
     progress(100, f'{copied} 个 episode / {annotations} 条标注 → {tgz.name} ({size / 1024:.0f} KB)')
-    return {'episodes': copied, 'annotations': annotations,
+    return {'episodes': copied, 'annotations': annotations, 'skipped_episodes': list(skip_rows.values()),
             'bundle': str(tgz), 'bytes': size}
 
 
@@ -515,6 +528,16 @@ def create_task(request: Request, payload: dict):
         if person is None or person['disabled'] or (person['expires_at'] and person['expires_at'] <= now_iso()):
             raise HTTPException(400, '分配账号不存在、已禁用或已过期')
         assignee_name = person['display_name'] or person['username']
+    reviewer = str(payload.get('reviewer') or '').strip()
+    reviewer_name = None
+    if not reviewer:
+        raise HTTPException(400, '请选择审核负责人')
+    if reviewer:
+        with db_session() as db:
+            person = db.execute('SELECT * FROM users WHERE username=? AND deleted_at IS NULL', (reviewer,)).fetchone()
+        if person is None or person['disabled'] or person['role'] not in ('admin', 'reviewer') or (person['expires_at'] and person['expires_at'] <= now_iso()):
+            raise HTTPException(400, '审核负责人必须是有效的管理员或审核员')
+        reviewer_name = person['display_name'] or person['username']
     nodes = TASK_TYPES[task_type]
     try:
         info = json.loads((p / 'meta' / 'info.json').read_text(encoding='utf8'))
@@ -532,37 +555,40 @@ def create_task(request: Request, payload: dict):
              'pending', episodes, user['username'], now, now))
         task_id = cur.lastrowid
         db.execute('UPDATE tasks SET assignee=?, assignee_name=? WHERE id=?', (assignee or None, assignee_name, task_id))
+        db.execute('UPDATE tasks SET reviewer=?, reviewer_name=? WHERE id=?', (reviewer or None, reviewer_name, task_id))
         db.executemany(
             'INSERT INTO task_nodes(task_id, seq, key, name, status) VALUES (?,?,?,?,?)',
             [(task_id, i, key, label, 'waiting') for i, (key, label) in enumerate(nodes)])
-        _event(db, task_id, None, f'任务创建 · {TASK_TYPE_LABEL[task_type]} · {p.name}')
+        _event(db, task_id, None, f'任务创建 · {TASK_TYPE_LABEL[task_type]} · {p.name}', actor=user['username'])
     enqueue(task_id)
+    from .notifications import schedule_published
+    schedule_published(task_id)
     return get_task(request, task_id)
 
 
 @router.post('/api/bridge/tasks/{task_id}/cancel')
 def cancel_task(request: Request, task_id: int, payload: dict = None):
-    require(request, 'admin', 'reviewer')
+    user = require(request, 'admin', 'reviewer')
     _task_or_404(task_id)
     with db_session() as db:
         db.execute("UPDATE tasks SET status='canceled', updated_at=? WHERE id=?",
                    (now_iso(), task_id))
         db.execute("UPDATE task_nodes SET status='skipped' WHERE task_id=? AND status IN ('waiting','blocked')",
                    (task_id,))
-        _event(db, task_id, None, '任务已取消', 'warn')
+        _event(db, task_id, None, '任务已取消', 'warn', actor=user['username'])
     return get_task(request, task_id)
 
 
 @router.post('/api/bridge/tasks/{task_id}/retry')
 def retry_task(request: Request, task_id: int, payload: dict = None):
-    require(request, 'admin', 'reviewer')
+    user = require(request, 'admin', 'reviewer')
     _task_or_404(task_id)
     with db_session() as db:
         db.execute("UPDATE task_nodes SET status='waiting', progress=0, message=NULL"
                    " WHERE task_id=? AND status IN ('failed','skipped')", (task_id,))
         db.execute("UPDATE tasks SET status='pending', error=NULL, updated_at=? WHERE id=?",
                    (now_iso(), task_id))
-        _event(db, task_id, None, '任务重试')
+        _event(db, task_id, None, '任务重试', actor=user['username'])
     enqueue(task_id)
     return get_task(request, task_id)
 
@@ -581,7 +607,7 @@ def complete_node(request: Request, task_id: int, key: str, payload: dict = None
         db.execute("UPDATE task_nodes SET status='done', progress=100, message=?, finished_at=?"
                    ' WHERE task_id=? AND key=?',
                    (f'由 {user["username"]} 确认完成', now_iso(), task_id, key))
-        _event(db, task_id, key, f'人工节点由 {user["username"]} 确认完成')
+        _event(db, task_id, key, f'人工节点由 {user["username"]} 确认完成', actor=user['username'])
         db.execute("UPDATE tasks SET status='pending', updated_at=? WHERE id=?", (now_iso(), task_id))
     enqueue(task_id)
     return get_task(request, task_id)
@@ -643,16 +669,19 @@ def list_episodes(request: Request, dataset: str, q: str = '', limit: int = 500)
         except Exception:
             pass
 
+    from .exclusions import excluded
+    skipped = excluded(str(p))
     rows = []
     for i in range(min(total, max(1, min(limit, 2000)))):
         length = lengths.get(i) or avg_len
         rows.append({
+            'skipped': i in skipped, 'skip_reason': skipped.get(i, {}).get('reason'),
             'index': i,
             'length': length,
             'duration': f'{int(length / fps) // 60:02d}:{int(length / fps) % 60:02d}',
             'task': texts.get(i) or '',
             'cameras': len(cams),
-            'annotated': seg_count.get(i, 0) > 0,
+            'annotated': i not in skipped and seg_count.get(i, 0) > 0,
             'segments': seg_count.get(i, 0),
             'status': status_map.get(i, 'labeling' if seg_count.get(i, 0) > 0 else 'untagged'),
         })

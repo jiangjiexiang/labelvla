@@ -31,6 +31,22 @@ function readInitialPage(): PlatformPage {
 }
 
 let currentPage = readInitialPage();
+let studioReturnPage: PlatformPage = currentPage || 'tasks';
+export function getStudioReturnPage(): PlatformPage { return studioReturnPage; }
+if (typeof window !== 'undefined') {
+  window.history.replaceState({ ...window.history.state, labelvlaPage: currentPage }, '', window.location.href);
+  window.addEventListener('popstate', (event: PopStateEvent) => {
+    const value = event.state?.labelvlaPage;
+    if (value !== null && !PAGES.includes(value)) return;
+    currentPage = value;
+    if (value) studioReturnPage = value;
+    try {
+      if (value) window.sessionStorage.setItem(STORAGE_KEY, value);
+      else window.sessionStorage.removeItem(STORAGE_KEY);
+    } catch { /* ignore unavailable storage */ }
+    for (const listener of listeners) listener();
+  });
+}
 const listeners = new Set<() => void>();
 
 function subscribe(cb: () => void) {
@@ -43,6 +59,9 @@ const getSnapshot = () => currentPage;
 export function usePage(): [PlatformPage, (p: PlatformPage) => void] {
   const page = useSyncExternalStore(subscribe, getSnapshot);
   const setPage = useCallback((p: PlatformPage) => {
+    if (p === currentPage) return;
+    if (p === null && currentPage) studioReturnPage = currentPage;
+    window.history.pushState({ ...window.history.state, labelvlaPage: p }, '', window.location.href);
     currentPage = p;
     try {
       if (p) window.sessionStorage.setItem(STORAGE_KEY, p);

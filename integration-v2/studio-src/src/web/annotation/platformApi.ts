@@ -6,6 +6,7 @@ export type Role = 'admin' | 'reviewer' | 'annotator';
 export type UserInfo = { username: string; role: Role; display_name?: string | null; must_change_password?: boolean };
 export type EpisodeStatus = 'untagged' | 'labeling' | 'review' | 'approved' | 'rejected';
 export type StatusRecord = {
+  skipped?: boolean; skip_reason?: string | null; skip_by?: string | null; skip_at?: string | null;
   status: EpisodeStatus;
   assignee?: string | null;
   reviewer?: string | null;
@@ -44,6 +45,7 @@ function normalizeStatus(d: unknown): EpisodeStatus {
 function normalizeRecord(d: unknown): StatusRecord {
   const o = (d && typeof d === 'object' ? d : {}) as Record<string, unknown>;
   return {
+    skipped: !!o.skipped, skip_reason: o.skip_reason as string | null, skip_by: o.skip_by as string | null, skip_at: o.skip_at as string | null,
     status: normalizeStatus(o.status),
     assignee: (o.assignee as string) ?? null,
     reviewer: (o.reviewer as string) ?? null,
@@ -143,3 +145,5 @@ function parseWords(d: unknown): string[] {
 export async function postDictWord(kind: DictKind, name: string): Promise<void> {
   await req('POST', `/api/bridge/dict?kind=${kind}`, { kind, name });
 }
+
+export async function postSkip(dataset: string, episode: number, skipped: boolean, reason?: string): Promise<StatusRecord> { return normalizeRecord(await req('POST', '/api/bridge/status/skip', {dataset, episode, skipped, reason})); }

@@ -7,6 +7,9 @@ import {
   type User, type EpisodeRow, type Task, type TaskDetail, type TaskStats, type VersionRow, type VideoRow,
 } from './api';
 import { usePage, useSelection } from './usePage';
+import { useLeRobotData, useLeRobotSelection } from '../../../react/contexts/LeRobotContext';
+import { useAnnotation } from '../../annotation/AnnotationContext';
+import { connectServerDataset } from '../serverDataset';
 
 // ── 通用小件 ──────────────────────────────────────────────
 
@@ -57,13 +60,31 @@ function Heading({ eyebrow, title, description, children }: {
   );
 }
 
-function EnterAnnotation({ children = '进入标注' }: { children?: React.ReactNode }) {
+function EnterAnnotation({ children = '进入标注', dataset, episode }: { children?: React.ReactNode; dataset: string; episode?: number }) {
   const [, setPage] = usePage();
-  return (
-    <button className="g-button g-primary" onClick={() => setPage(null)}>
-      {children}<ArrowRight />
+  const [, setSelection] = useSelection();
+  const { initialize } = useLeRobotData();
+  const { selectEpisode } = useLeRobotSelection();
+  const annotation = useAnnotation();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const enter = async () => {
+    if (!dataset) { setError('任务未绑定数据集'); return; }
+    setBusy(true); setError('');
+    try {
+      await connectServerDataset(dataset, initialize, annotation?.setDataset);
+      await selectEpisode(episode ?? 0);
+      setSelection({ dataset, episode: episode ?? 0 });
+      setPage(null);
+    } catch (e) { setError(errText(e)); }
+    finally { setBusy(false); }
+  };
+  return <div>
+    <button className="g-button g-primary" disabled={busy || !dataset} onClick={() => void enter()}>
+      {busy ? '加载数据集…' : children}<ArrowRight />
     </button>
-  );
+    {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+  </div>;
 }
 
 function Progress({ value }: { value: number }) {
@@ -155,10 +176,10 @@ export function TasksPage() {
 
   return (
     <div className="g-page">
-      <Heading eyebrow="任务管理" title="任务管理" description="管理数据处理流程,追踪每个任务的执行状态">
+      <div className="flex justify-end gap-2">
         <button className="g-button" onClick={() => void load()}><RefreshCw />刷新</button>
         <button className="g-button g-primary" onClick={() => setPage('task-create')}><Plus />新建任务</button>
-      </Heading>
+      </div>
 
       <div className="g-summary">
         {([
@@ -207,7 +228,7 @@ export function TasksPage() {
             <thead>
               <tr>
                 <th>任务 ID</th><th>任务名称</th><th>关联数据集</th><th>状态</th>
-                <th>处理进度</th><th>标注负责人</th><th>创建人</th><th>当前节点</th><th>操作</th>
+                <th>处理进度</th><th>标注负责人</th><th>审核负责人</th><th>创建人</th><th>当前节点</th><th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -222,12 +243,13 @@ export function TasksPage() {
                   <td><span className={`g-status ${statusTone(task.status)}`}>● {TASK_STATUS_LABEL[task.status]}</span></td>
                   <td><Progress value={task.progress} /></td>
                   <td>{task.assignee_name || task.assignee || '未分配'}</td>
+                  <td>{task.reviewer_name || task.reviewer || '未分配'}</td>
                   <td>{task.created_by || '-'}</td>
                   <td>{task.nodes.find((n) => n.key === task.current_node)?.name ?? '-'}</td>
                   <td>
                     <div className="g-row-actions">
                       <button className="g-link" onClick={() => open(task.id)}>查看</button>
-                      {(task.status === 'running' || task.status === 'waiting_human') && <EnterAnnotation />}
+                      {(task.status === 'running' || task.status === 'waiting_human') && <EnterAnnotation dataset={task.dataset} />}
                     </div>
                   </td>
                 </tr>
@@ -255,6 +277,7 @@ export function TaskCreatePage() {
   const [dataset, setDataset] = useState('');
   const [taskType, setTaskType] = useState('video_annotation');
   const [assignee, setAssignee] = useState('');
+  const [reviewer, setReviewer] = useState('');
   const [people, setPeople] = useState<User[]>([]);
   useEffect(() => {
     api.users().then((users) => setPeople(users.filter((u) => !u.disabled && (!u.expires_at || new Date(u.expires_at).getTime() > Date.now()))))
@@ -275,6 +298,7 @@ export function TaskCreatePage() {
   const submit = async () => {
     if (!dataset) { setError('请先选择数据集'); return; }
     if (taskType === 'video_annotation' && !assignee) { setError('请选择标注负责人'); return; }
+    if (!reviewer) { setError('请选择审核负责人'); return; }
     setSubmitting(true);
     setError('');
     try {
@@ -283,6 +307,7 @@ export function TaskCreatePage() {
         dataset,
         task_type: taskType,
         assignee,
+        reviewer,
         create_mode: createMode,
         description: description.trim(),
       });
@@ -329,6 +354,12 @@ export function TaskCreatePage() {
               <select value={assignee} required={taskType === 'video_annotation'} onChange={(e) => setAssignee(e.target.value)}>
                 <option value="">请选择标注负责人</option>
                 {people.map((u) => <option key={u.id} value={u.username}>{u.display_name || u.username}（{u.username}）</option>)}
+              </select>
+            </label>
+            <label className="full">审核负责人
+              <select value={reviewer} required onChange={(e) => setReviewer(e.target.value)}>
+                <option value="">请选择审核负责人</option>
+                {people.filter((u) => u.role === 'admin' || u.role === 'reviewer').map((u) => <option key={u.id} value={u.username}>{u.display_name || u.username}（{u.username}）</option>)}
               </select>
             </label>
             <label className="full">任务描述
@@ -446,7 +477,8 @@ export function TaskDetailPage() {
         {task.status === 'failed' && (
           <button className="g-button" disabled={busy} onClick={() => void act(() => api.retryTask(task.id))}>重试</button>
         )}
-        {task.status === 'waiting_human' && <EnterAnnotation>进入工作区</EnterAnnotation>}
+        {task.status === 'waiting_human' && <EnterAnnotation dataset={task.dataset}>进入工作区</EnterAnnotation>}
+        <EnterAnnotation dataset={task.dataset}>查看视频质检</EnterAnnotation>
       </Heading>
 
       {error && <Notice kind="error">{error}</Notice>}
@@ -466,6 +498,7 @@ export function TaskDetailPage() {
               ['所属数据集', task.dataset_name],
               ['Episodes', String(task.episodes_total)],
               ['标注负责人', task.assignee_name || task.assignee || '未分配'],
+              ['审核负责人', task.reviewer_name || task.reviewer || '未分配'],
               ['创建人', task.created_by || '-'],
               ['创建时间', fmtTime(task.created_at)],
               ['开始时间', fmtTime(task.started_at)],
@@ -543,11 +576,12 @@ export function TaskDetailPage() {
         <div className="g-card-title"><div><h2>执行事件</h2><p>最近的流水线事件</p></div></div>
         <div className="g-table-wrap">
           <table>
-            <thead><tr><th>时间</th><th>节点</th><th>级别</th><th>事件</th></tr></thead>
+            <thead><tr><th>时间</th><th>操作人</th><th>节点</th><th>级别</th><th>事件</th></tr></thead>
             <tbody>
-              {task.events.slice(0, 10).map((ev) => (
+              {task.events.map((ev) => (
                 <tr key={ev.id}>
                   <td className="g-mono">{fmtTime(ev.at)}</td>
+                  <td>{ev.actor === 'system' ? '系统' : (ev.actor || ev.message.match(/^人工节点由 (.+) 确认完成$/)?.[1] || '未记录')}</td>
                   <td>{ev.node || '-'}</td>
                   <td><span className={`g-status ${ev.level === 'error' ? 'danger' : ev.level === 'warn' ? 'running' : ''}`}>{ev.level}</span></td>
                   <td>{ev.message}</td>
@@ -610,7 +644,7 @@ export function EpisodesPage() {
         description={data ? `${data.version} · ${data.total} Episodes · ${data.cameras.length} 相机 · ${data.fps} FPS` : '选择数据集查看 Episode'}
       >
         <DatasetPicker value={dataset} onChange={(v) => { setDataset(v); setSelection({ dataset: v }); }} datasets={datasets} />
-        <EnterAnnotation>打开标注工作区</EnterAnnotation>
+        <EnterAnnotation dataset={dataset}>打开标注工作区</EnterAnnotation>
       </Heading>
 
       {error && <Notice kind="error">{error}</Notice>}
@@ -649,10 +683,11 @@ export function EpisodesPage() {
                   <td>{row.duration}</td>
                   <td>{row.cameras}</td>
                   <td>
-                    <span className={`g-status ${statusTone(row.status)}`}>● {STATUS_LABEL[row.status]}</span>
+                    <span className={`g-status ${statusTone(row.status)}`}>● {row.skipped ? '已跳过标注' : STATUS_LABEL[row.status]}</span>
+                    {row.skipped && <small title={row.skip_reason || undefined}>{row.skip_reason}</small>}
                     {row.segments > 0 && <small>{row.segments} 段</small>}
                   </td>
-                  <td><EnterAnnotation /></td>
+                  <td><EnterAnnotation dataset={dataset} episode={row.index} /></td>
                 </tr>
               ))}
             </tbody>
@@ -706,7 +741,7 @@ export function VideosPage() {
     <div className="g-page">
       <Heading eyebrow="标注中心" title="视频库" description="浏览数据集里的真实相机视频">
         <DatasetPicker value={dataset} onChange={setDataset} datasets={datasets} />
-        <EnterAnnotation>返回标注平台</EnterAnnotation>
+        <EnterAnnotation dataset={dataset}>返回标注平台</EnterAnnotation>
       </Heading>
 
       {error && <Notice kind="error">{error}</Notice>}

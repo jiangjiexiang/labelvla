@@ -37,6 +37,7 @@ export type Role = 'admin' | 'reviewer' | 'annotator';
 export interface User {
   id: number; username: string; display_name: string; role: Role;
   disabled?: boolean; expires_at?: string | null; last_login?: string | null; created_at?: string;
+  dingtalk_userid?: string;
   must_change_password?: boolean;
 }
 export interface LoginRecord { login_at: string; logout_at?: string | null; ip?: string; device?: string }
@@ -67,9 +68,10 @@ export interface TaskNode {
   task_id: number; seq: number; key: string; name: string; status: NodeStatus;
   progress: number; message?: string | null; started_at?: string | null; finished_at?: string | null;
 }
-export interface TaskEvent { id: number; at: string; node?: string | null; level: string; message: string }
+export interface TaskEvent { actor?: string | null; id: number; at: string; node?: string | null; level: string; message: string }
 export interface Task {
   assignee?: string | null; assignee_name?: string | null;
+  reviewer?: string | null; reviewer_name?: string | null;
   id: number; name: string; dataset: string; dataset_name: string; task_type: string; task_type_label: string;
   create_mode: string; base_task_id?: number | null; description?: string | null;
   status: TaskStatus; current_node?: string | null; progress: number;
@@ -80,6 +82,7 @@ export interface Task {
 export interface TaskDetail extends Task { events: TaskEvent[] }
 export interface TaskStats { total: number; running: number; pending: number; done: number; failed: number; dist: Record<string, number> }
 export interface EpisodeRow {
+  skipped?: boolean; skip_reason?: string | null;
   index: number; length: number; duration: string; task: string; cameras: number;
   annotated: boolean; segments: number; status: EpisodeStatus;
 }
@@ -128,6 +131,7 @@ export const api = {
     post<User>('/api/bridge/users', u),
   updateUser: (id: number, u: Partial<Pick<User, 'display_name' | 'role' | 'expires_at' | 'disabled'>> & { password?: string }) =>
     patch<User>(`/api/bridge/users/${id}`, u),
+  bindDingtalk: (id: number, dingtalk_userid: string) => post<{ ok: boolean }>(`/api/bridge/users/${id}/dingtalk`, { dingtalk_userid }),
   disableUser: (id: number) => post<{ ok: boolean }>(`/api/bridge/users/${id}/disable`),
   deleteUser: (id: number) => del<{ ok: boolean }>(`/api/bridge/users/${id}`),
   userLogins: (id: number) => get<LoginRecord[]>(`/api/bridge/users/${id}/logins`),
@@ -166,7 +170,7 @@ export const api = {
   },
   task: (id: number) => get<TaskDetail>(`/api/bridge/tasks/${id}`),
   taskStats: () => get<TaskStats>('/api/bridge/tasks/stats'),
-  createTask: (payload: { name: string; dataset: string; task_type: string; create_mode?: string; description?: string; assignee?: string; base_task_id?: number | null }) =>
+  createTask: (payload: { name: string; dataset: string; task_type: string; create_mode?: string; description?: string; assignee?: string; reviewer?: string; base_task_id?: number | null }) =>
     post<TaskDetail>('/api/bridge/tasks', payload),
   cancelTask: (id: number) => post<TaskDetail>(`/api/bridge/tasks/${id}/cancel`),
   retryTask: (id: number) => post<TaskDetail>(`/api/bridge/tasks/${id}/retry`),

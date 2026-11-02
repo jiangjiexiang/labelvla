@@ -118,6 +118,9 @@ def bridge_read_segments(dataset: str, episode: int):
 
 @app.post('/api/bridge/segments')
 def bridge_write_segments(dataset: str, episode: int, payload: dict):
+    from bridge_ext.exclusions import excluded
+    if episode in excluded(str(safe_dataset(dataset))):
+        raise HTTPException(409, '该数据已跳过，请先恢复标注')
     with annotation_lock:
         store, length = segment_store(dataset, episode)
         if payload.get('revision') != revision(store):

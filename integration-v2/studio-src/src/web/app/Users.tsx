@@ -9,6 +9,8 @@ export function Users() {
   const { user: me } = useAuth();
   const [rows, setRows] = useState<User[]>([]);
   const [error, setError] = useState('');
+  const [dingUser, setDingUser] = useState<User | null>(null);
+  const [dingId, setDingId] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [logins, setLogins] = useState<{ user: User; items: LoginRecord[] } | null>(null);
   const [form, setForm] = useState({ username: '', display_name: '', password: '', role: 'annotator' as User['role'] });
@@ -90,7 +92,9 @@ export function Users() {
             {rows.map((u) => (
               <tr key={u.id} className="border-t border-border hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">{u.username}</td>
-                <td className="px-3 py-2">{u.display_name}</td>
+                <td className="px-3 py-2">{u.display_name}
+                  {me?.role === 'admin' && <button className="ml-2 text-[11px] text-primary" onClick={() => { setDingUser(u); setDingId(u.dingtalk_userid || ''); }}>{u.dingtalk_userid ? '钉钉已绑定' : '绑定钉钉'}</button>}
+                </td>
                 <td className="px-3 py-2">{me?.role === 'admin' && me.id !== u.id ? (
                   <select aria-label={`修改 ${u.username} 的角色`} className="rounded border border-border bg-background px-2 py-1" style={{ width: 110, height: 30, display: 'inline-block', margin: 0, fontSize: 12, verticalAlign: 'middle' }} value={u.role} onChange={(e) => void changeRole(u, e.target.value as Role)}>
                     {(['annotator', 'reviewer', 'admin'] as Role[]).map((role) => <option key={role} value={role}>{ROLE_LABEL[role]}</option>)}
@@ -122,6 +126,14 @@ export function Users() {
         </table>
       </div>
 
+      <Dialog open={!!dingUser} onOpenChange={(open) => { if (!open) setDingUser(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>绑定钉钉 · {dingUser?.display_name}</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">填写该人员的钉钉 UserID，用于任务发布后在群内 @负责人；留空解除绑定。</p>
+          <Input aria-label="钉钉 UserID" value={dingId} onChange={(e) => setDingId(e.target.value)} maxLength={128} />
+          <Button onClick={() => { if (dingUser) void api.bindDingtalk(dingUser.id, dingId.trim()).then(() => { setDingUser(null); return load(); }).catch((e) => setError(String(e))); }}>保存</Button>
+        </DialogContent>
+      </Dialog>
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>新建账号</DialogTitle></DialogHeader>

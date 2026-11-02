@@ -101,6 +101,9 @@ def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_db() as conn:
         conn.executescript(_SCHEMA)
+        columns = {r['name'] for r in conn.execute('PRAGMA table_info(users)')}
+        if 'dingtalk_userid' not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN dingtalk_userid TEXT NOT NULL DEFAULT ''")
         # 内置 admin/admin,首登强制改密
         row = conn.execute(
             "SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL LIMIT 1"

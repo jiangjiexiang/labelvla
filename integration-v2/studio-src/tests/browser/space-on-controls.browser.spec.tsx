@@ -32,14 +32,11 @@ it('Space activates a focused button once and toggles playback only when no cont
     await expect.poll(() => playButton()?.disabled, { timeout: 60_000 }).toBe(false);
     await expect.poll(() => nextButton()?.disabled, { timeout: 60_000 }).toBe(false);
 
-    // Loop the (three-frame) episode so playback cannot end on its own mid-test,
-    // and pause the autoplay that starts once the episode loads.
+    // Single-episode loop is the default, so playback cannot end on its own mid-test.
+    // Pause the autoplay that starts once the episode loads.
     const modeButton = host.querySelector<HTMLButtonElement>(
       'button[aria-label="Toggle playback mode"]',
     )!;
-    modeButton.click(); // sequential -> shuffle
-    await expect.poll(() => modeButton.querySelector('.lucide-shuffle')).not.toBeNull();
-    modeButton.click(); // shuffle -> loop
     await expect
       .poll(() => modeButton.querySelector('[class*="repeat-1"], [class*="repeat1"]'))
       .not.toBeNull();

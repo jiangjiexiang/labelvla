@@ -161,7 +161,7 @@ export function DatasetList() {
       <tr key={row.path} className={`border-t border-border hover:bg-muted/30 ${child ? 'bg-muted/10' : ''}`}>
         <td className={`px-3 py-2 ${child ? 'pl-10' : ''}`}>
           <div className={child ? 'border-l border-border pl-3' : ''}>
-            <div className="font-medium">{row.name}</div>
+            <button className="font-medium text-primary hover:underline" disabled={isBusy} onClick={() => void openDataset(row.path)}>{row.name}</button>
             <div className="max-w-[280px] truncate text-[10px] text-muted-foreground">{row.path}</div>
           </div>
         </td>

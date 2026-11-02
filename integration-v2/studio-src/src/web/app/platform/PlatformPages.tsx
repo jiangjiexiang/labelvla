@@ -1,32 +1,32 @@
-/** 平台页容器:按 ?page= 切换,作为覆盖层叠在标注工作区之上。 */
 import { Dashboard } from '../Dashboard';
 import { DatasetList } from '../DatasetList';
 import { QcReport } from '../QcReport';
 import { Users } from '../Users';
+import { EpisodesPage, TaskCreatePage, TaskDetailPage, TasksPage, VersionsPage, VideosPage } from './GeneralPages';
 import { PlatformNav } from './PlatformNav';
 import { usePage } from './usePage';
+import './platform-general.css';
 
 export function PlatformPages() {
   const [page, setPage] = usePage();
   if (!page) {
-    return (
-      <button
-        className="fixed bottom-14 right-4 z-40 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground shadow-md hover:text-foreground"
-        onClick={() => setPage('datasets')}
-      >
-        数据平台 →
-      </button>
-    );
+    return <button className="g-return-platform" onClick={() => setPage('dashboard')}>数据平台 →</button>;
   }
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
+    <div className="g-platform">
       <PlatformNav />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <main className="g-main">
         {page === 'dashboard' && <Dashboard />}
         {page === 'datasets' && <DatasetList />}
+        {page === 'episodes' && <EpisodesPage />}
+        {page === 'tasks' && <TasksPage />}
+        {page === 'task-create' && <TaskCreatePage />}
+        {page === 'task-detail' && <TaskDetailPage />}
+        {page === 'videos' && <VideosPage />}
+        {page === 'versions' && <VersionsPage />}
         {page === 'users' && <Users />}
         {page === 'qc' && <QcReport />}
-      </div>
+      </main>
     </div>
   );
 }

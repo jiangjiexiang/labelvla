@@ -442,10 +442,10 @@ def bridge_mask_file(dataset: str, episode: int, key: str, frame: int):
 # ── 平台化扩展注册槽(Wave 0):各 bridge_ext 模块在此 register(app) ──
 from bridge_ext import auth as _ext_auth, users as _ext_users
 from bridge_ext import ledger as _ext_ledger, status as _ext_status, \
-    dictionary as _ext_dict, qc as _ext_qc, dashboard as _ext_dash
+    dictionary as _ext_dict, qc as _ext_qc, dashboard as _ext_dash, tasks as _ext_tasks
 _ext_auth.register(app)
 _ext_users.register(app)
-for _m in (_ext_ledger, _ext_status, _ext_dict, _ext_qc, _ext_dash):
+for _m in (_ext_ledger, _ext_status, _ext_dict, _ext_qc, _ext_dash, _ext_tasks):
     _m.register(app)
 
 

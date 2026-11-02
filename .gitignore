@@ -24,3 +24,10 @@ __pycache__/
 .env
 *.log
 .DS_Store
+
+# 本地浏览器与测试缓存
+.playwright-browsers/
+playwright-report/
+test-results/
+.pytest_cache/
+*.tsbuildinfo

@@ -1,14 +1,13 @@
 /** 平台页状态:页面选择不写入地址栏,地址始终保持站点根路径。 */
 import { useCallback, useSyncExternalStore } from 'react';
 
-export type PlatformPage = 'dashboard' | 'datasets' | 'users' | 'qc' | null;
+export type PlatformPage = 'dashboard' | 'datasets' | 'episodes' | 'tasks' | 'task-create' | 'task-detail' | 'videos' | 'versions' | 'users' | 'qc' | null;
 
 const STORAGE_KEY = 'labelvla.platform-page';
+const PAGES = ['dashboard', 'datasets', 'episodes', 'tasks', 'task-create', 'task-detail', 'videos', 'versions', 'users', 'qc'] as const;
 
 function parsePage(value: string | null): PlatformPage {
-  return value === 'dashboard' || value === 'datasets' || value === 'users' || value === 'qc'
-    ? value
-    : null;
+  return PAGES.includes(value as typeof PAGES[number]) ? value as Exclude<PlatformPage, null> : null;
 }
 
 function stripPageParam() {
@@ -21,14 +20,14 @@ function stripPageParam() {
 }
 
 function readInitialPage(): PlatformPage {
-  if (typeof window === 'undefined') return 'datasets';
+  if (typeof window === 'undefined') return 'dashboard';
   const fromUrl = parsePage(new URLSearchParams(window.location.search).get('page'));
   stripPageParam();
   if (fromUrl) {
     try { window.sessionStorage.setItem(STORAGE_KEY, fromUrl); } catch { /* 忽略存储限制 */ }
     return fromUrl;
   }
-  try { return parsePage(window.sessionStorage.getItem(STORAGE_KEY)) ?? 'datasets'; } catch { return 'datasets'; }
+  try { return parsePage(window.sessionStorage.getItem(STORAGE_KEY)) ?? 'dashboard'; } catch { return 'dashboard'; }
 }
 
 let currentPage = readInitialPage();
@@ -53,4 +52,29 @@ export function usePage(): [PlatformPage, (p: PlatformPage) => void] {
     for (const listener of listeners) listener();
   }, []);
   return [page, setPage];
+}
+
+/** 页面之间传递的上下文(当前任务 / 数据集 / episode)。 */
+export interface PlatformSelection {
+  taskId?: number;
+  dataset?: string;
+  episode?: number;
+}
+
+let currentSelection: PlatformSelection = {};
+const selectionListeners = new Set<() => void>();
+const getSelectionSnapshot = () => currentSelection;
+
+function subscribeSelection(cb: () => void) {
+  selectionListeners.add(cb);
+  return () => { selectionListeners.delete(cb); };
+}
+
+export function useSelection(): [PlatformSelection, (s: PlatformSelection) => void] {
+  const selection = useSyncExternalStore(subscribeSelection, getSelectionSnapshot);
+  const setSelection = useCallback((s: PlatformSelection) => {
+    currentSelection = s;
+    for (const listener of selectionListeners) listener();
+  }, []);
+  return [selection, setSelection];
 }

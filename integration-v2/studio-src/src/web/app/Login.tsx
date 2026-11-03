@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/ui';
 import { api } from './platform/api';
 import { setAuth } from './platform/authStore';
-import { usePage } from './platform/usePage';
+import { resetPageTo, takeLandingPage } from './platform/usePage';
 
 export function Login() {
-  const [, setPage] = usePage();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -29,7 +28,7 @@ export function Login() {
         return;
       }
       setAuth({ user: r, ready: true });
-      setPage('datasets');
+      resetPageTo(takeLandingPage());
     } catch (err) {
       setError(err instanceof Error ? err.message : '登录失败');
     } finally {
@@ -47,7 +46,7 @@ export function Login() {
       await api.changePassword(oldPw, newPw);
       const me = await api.me();
       setAuth({ user: me, ready: true });
-      setPage('datasets');
+      resetPageTo(takeLandingPage());
     } catch (err) {
       setError(err instanceof Error ? err.message : '修改失败');
     } finally {

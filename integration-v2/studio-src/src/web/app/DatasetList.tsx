@@ -77,7 +77,8 @@ export function DatasetList() {
     setQ(v);
     const params = new URLSearchParams(window.location.search);
     if (v) params.set('q', v); else params.delete('q');
-    window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
+    const qs = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
   };
 
   // 按父目录聚合 part，数据管理展示逻辑数据集。

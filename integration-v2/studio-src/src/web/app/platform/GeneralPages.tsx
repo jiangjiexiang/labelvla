@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronRight, Play, Plus, RefreshCw, Search, X,
+  ArrowLeft, ArrowRight, Check, ChevronRight, Link2, Play, Plus, RefreshCw, Search, X,
 } from 'lucide-react';
 import {
   api, NODE_STATUS_LABEL, STATUS_LABEL, TASK_STATUS_LABEL, TASK_TYPE_OPTIONS,
@@ -61,7 +61,7 @@ function Heading({ eyebrow, title, description, children }: {
   );
 }
 
-function EnterAnnotation({ children = '进入标注', dataset, episode }: { children?: React.ReactNode; dataset: string; episode?: number }) {
+function EnterAnnotation({ children = '进入标注', dataset, episode, taskId }: { children?: React.ReactNode; dataset: string; episode?: number; taskId?: number }) {
   const [, setPage] = usePage();
   const [, setSelection] = useSelection();
   const { initialize } = useLeRobotData();
@@ -73,9 +73,16 @@ function EnterAnnotation({ children = '进入标注', dataset, episode }: { chil
     if (!dataset) { setError('任务未绑定数据集'); return; }
     setBusy(true); setError('');
     try {
-      await connectServerDataset(dataset, initialize, annotation?.setDataset);
+      let openedDataset = dataset;
+      if (taskId) {
+        const response = await fetch(`/api/bridge/tasks/${taskId}/workspace`, { method: 'POST' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || '创建任务副本失败');
+        openedDataset = result.dataset;
+      }
+      await connectServerDataset(openedDataset, initialize, annotation?.setDataset);
       await selectEpisode(episode ?? 0);
-      setSelection({ dataset, episode: episode ?? 0 });
+      setSelection({ dataset: openedDataset, episode: episode ?? 0, taskId });
       setPage(null);
     } catch (e) { setError(errText(e)); }
     finally { setBusy(false); }
@@ -91,6 +98,39 @@ function EnterAnnotation({ children = '进入标注', dataset, episode }: { chil
 function Progress({ value }: { value: number }) {
   const v = Math.max(0, Math.min(100, Math.round(value || 0)));
   return <div className="g-progress"><div><span style={{ width: `${v}%` }} /></div><b>{v}%</b></div>;
+}
+
+
+/** 复制任务深链(/?task=N)。明文 HTTP 下 navigator.clipboard 不可用,回退到 execCommand。 */
+function ShareTask({ id }: { id: number }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    const url = `${window.location.origin}/?task=${id}`;
+    try {
+      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(url);
+      else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        if (!ok) throw new Error('execCommand 复制失败');
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt('复制这个链接发给同事:', url);
+    }
+  };
+  return (
+    <button className="g-button" onClick={() => void copy()}>
+      {copied ? <Check /> : <Link2 />}
+      {copied ? '已复制' : '复制链接'}
+    </button>
+  );
 }
 
 function Notice({ kind, children }: { kind: 'error' | 'info'; children: React.ReactNode }) {
@@ -250,7 +290,7 @@ export function TasksPage() {
                   <td data-label="操作">
                     <div className="g-row-actions">
                       <button className="g-link" onClick={() => open(task.id)}>查看</button>
-                      {(task.status === 'running' || task.status === 'waiting_human') && <EnterAnnotation dataset={task.dataset} />}
+                      {(task.status === 'running' || task.status === 'waiting_human') && <EnterAnnotation taskId={task.id} dataset={task.dataset} />}
                     </div>
                   </td>
                 </tr>
@@ -285,6 +325,16 @@ export function TaskCreatePage() {
       .catch((e) => setError(`负责人列表加载失败：${errText(e)}`));
   }, []);
   const [createMode, setCreateMode] = useState('new');
+  const [baseVersion, setBaseVersion] = useState('');
+  const [versionOptions, setVersionOptions] = useState<VersionRow[]>([]);
+  useEffect(() => {
+    let active = true;
+    setBaseVersion(''); setVersionOptions([]);
+    if (dataset) api.versions(dataset).then((result) => {
+      if (active) setVersionOptions(result.versions.filter((row) => !!row.dataset_path));
+    }).catch((e) => { if (active) setError(errText(e)); });
+    return () => { active = false; };
+  }, [dataset]);
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -310,6 +360,7 @@ export function TaskCreatePage() {
         assignee,
         reviewer,
         create_mode: createMode,
+        base_version_id: baseVersion ? Number(baseVersion) : null,
         description: description.trim(),
       });
       setSelection({ taskId: created.id });
@@ -350,6 +401,13 @@ export function TaskCreatePage() {
             </label>
             <label className="full">关联数据集
               <DatasetPicker value={dataset} onChange={setDataset} datasets={datasets} />
+            </label>
+            <label className="full">起始版本
+              <select value={baseVersion} onChange={(e) => setBaseVersion(e.target.value)}>
+                <option value="">原始数据集</option>
+                {versionOptions.map((row) => <option key={row.id} value={row.id}>{row.version} · {fmtTime(row.created_at)}</option>)}
+              </select>
+              <small>从所选数据复制任务副本，修改和发布都保留旧版本。</small>
             </label>
             <label className="full">分配给
               <select value={assignee} required={taskType === 'video_annotation'} onChange={(e) => setAssignee(e.target.value)}>
@@ -473,14 +531,15 @@ export function TaskDetailPage() {
       <Heading eyebrow="任务管理 / 任务详情" title={task.name} description={`${task.task_type_label} · ${task.dataset_name}`}>
         <button className="g-button" onClick={() => setPage('tasks')}><ArrowLeft />返回</button>
         <button className="g-button" onClick={() => void load()}><RefreshCw />刷新</button>
+        <ShareTask id={task.id} />
         {active && (
           <button className="g-button" disabled={busy} onClick={() => void act(() => api.cancelTask(task.id))}>取消任务</button>
         )}
         {task.status === 'failed' && (
           <button className="g-button" disabled={busy} onClick={() => void act(() => api.retryTask(task.id))}>重试</button>
         )}
-        {task.status === 'waiting_human' && <EnterAnnotation dataset={task.dataset}>进入工作区</EnterAnnotation>}
-        <EnterAnnotation dataset={task.dataset}>查看视频质检</EnterAnnotation>
+        {task.status === 'waiting_human' && <EnterAnnotation taskId={task.id} dataset={task.dataset}>进入工作区</EnterAnnotation>}
+        <EnterAnnotation taskId={task.id} dataset={task.dataset}>查看视频质检</EnterAnnotation>
       </Heading>
 
       {error && <Notice kind="error">{error}</Notice>}
@@ -555,7 +614,7 @@ export function TaskDetailPage() {
               )}
             </summary>
             {node.key === 'qc' && node.status === 'blocked' && <div className="flex flex-wrap gap-2 p-3">
-              <EnterAnnotation dataset={task.dataset}>查看视频质检</EnterAnnotation>
+              <EnterAnnotation taskId={task.id} dataset={task.dataset}>查看视频质检</EnterAnnotation>
               {(user?.role === 'admin' || (user?.role === 'reviewer' && user.username === task.reviewer)) && <>
                 <button className="g-button g-primary" disabled={busy} onClick={() => { if (window.confirm('确认已检查视频，质检通过并继续打包发布？')) void act(() => api.completeNode(task.id, 'qc')); }}>质检通过</button>
                 <button className="g-button" disabled={busy} onClick={() => { const reason = window.prompt('质检打回原因（必填）'); if (reason?.trim()) void act(() => api.completeNode(task.id, 'qc', 'rejected', reason.trim())); }}>打回重标</button>
@@ -837,7 +896,7 @@ export function VersionsPage() {
         <div className="g-table-wrap g-version-table-wrap">
           <table className="g-version-table">
             <thead>
-              <tr><th>版本</th><th>数据集</th><th>变更说明</th><th>Episodes</th><th>大小</th><th>状态</th><th>摘要</th></tr>
+              <tr><th>版本</th><th>数据集</th><th>变更说明</th><th>Episodes</th><th>大小</th><th>状态</th><th>摘要</th><th>数据文件</th></tr>
             </thead>
             <tbody>
               {rows.map((row) => (
@@ -849,6 +908,8 @@ export function VersionsPage() {
                   <td data-label="大小">{row.size_gb ?? 0} GB</td>
                   <td data-label="状态"><span className="g-status success">● {row.status}</span></td>
                   <td className="g-mono" data-label="摘要">{(row.manifest || '').slice(0, 12) || '-'}</td>
+                  <td data-label="数据文件">{row.download_url ? <a className="g-link" href={row.download_url}>下载完整数据包</a> : '-'}
+                    {row.dataset_path && <small className="block max-w-xs break-all" title={row.dataset_path}>{row.dataset_path}</small>}</td>
                 </tr>
               ))}
             </tbody>

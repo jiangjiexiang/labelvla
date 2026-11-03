@@ -20,6 +20,7 @@ def fields(dataset,episode):
 def set_exclusion(dataset,episode,skipped,reason,user):
     if not isinstance(skipped,bool):raise HTTPException(400,'跳过状态必须是布尔值')
     reason=str(reason or '').strip()
+    if skipped and not reason:raise HTTPException(400,'请选择未标注原因')
     if len(reason)>500:raise HTTPException(400,'原因最多500字符')
     with db_session() as db:
         db.execute('INSERT INTO episode_exclusions VALUES (?,?,?,?,?,?) ON CONFLICT(dataset,episode) DO UPDATE SET skipped=excluded.skipped,reason=excluded.reason,updated_by=excluded.updated_by,updated_at=excluded.updated_at',(str(dataset),episode,int(skipped),reason,user,now_iso()))

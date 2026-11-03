@@ -109,13 +109,14 @@
 .g-versions-card{margin-top:20px}
 .g-versions-card .g-card-title{padding:22px 22px 0}
 .g-version-table{table-layout:fixed}
-.g-version-table th:nth-child(1){width:8%}
-.g-version-table th:nth-child(2){width:20%}
-.g-version-table th:nth-child(3){width:28%}
-.g-version-table th:nth-child(4){width:9%}
-.g-version-table th:nth-child(5){width:12%}
-.g-version-table th:nth-child(6){width:11%}
-.g-version-table th:nth-child(7){width:12%}
+.g-version-table th:nth-child(1){width:7%}
+.g-version-table th:nth-child(2){width:19%}
+.g-version-table th:nth-child(3){width:21%}
+.g-version-table th:nth-child(4){width:8%}
+.g-version-table th:nth-child(5){width:9%}
+.g-version-table th:nth-child(6){width:9%}
+.g-version-table th:nth-child(7){width:11%}
+.g-version-table th:nth-child(8){width:16%}
 .g-version-table td{height:auto;min-height:54px;white-space:normal;overflow-wrap:anywhere;vertical-align:top}
 @media(max-width:1280px){
   .g-version-table-wrap{overflow:visible}
@@ -126,7 +127,7 @@
   .g-version-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;padding:16px;border:1px solid var(--g-border);border-radius:8px;background:#fff}
   .g-version-table td{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;min-height:0;padding:0;border:0;overflow:visible;white-space:normal;text-overflow:clip}
   .g-version-table td::before{color:var(--g-muted);font-size:10px;content:attr(data-label)}
-  .g-version-table td:nth-child(2),.g-version-table td:nth-child(3){grid-column:1/-1}
+  .g-version-table td:nth-child(2),.g-version-table td:nth-child(3),.g-version-table td:nth-child(8){grid-column:1/-1}
 }
 @media(max-width:900px){
   .g-version-table tbody{grid-template-columns:1fr}
@@ -136,3 +137,60 @@
   .g-version-table tbody{padding:12px}
   .g-version-table tr{grid-template-columns:1fr;padding:14px}
 }
+
+.g-studio-task-actions{position:fixed;left:12px;bottom:12px;z-index:80;display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:calc(100vw - 24px);font:12px sans-serif}.g-studio-task-actions button,.g-studio-save-overlay button{padding:8px 12px;border:1px solid #d2d6dd;border-radius:6px;background:#fff;color:#24324a;cursor:pointer}.g-studio-task-actions button:nth-child(2){background:#1677ff;color:white;border-color:#1677ff}.g-studio-task-actions span{background:#fff;padding:6px;border-radius:4px;max-width:50vw}.g-studio-task-actions [role=alert]{color:#b42318}.g-studio-save-overlay{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.6);display:grid;place-items:center;color:#24324a}.g-studio-save-overlay>div{width:min(520px,90vw);background:#fff;padding:28px;border-radius:12px}.g-studio-save-overlay p{margin:16px 0;overflow-wrap:anywhere;font-size:13px}
+
+/* Version files are one bounded cell; long storage paths expand only on demand. */
+.g-version-toolbar{display:flex;justify-content:flex-end;margin-bottom:12px}
+.g-version-files{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;width:100%}
+.g-version-files>.g-link{white-space:nowrap;line-height:1.5}
+.g-version-unavailable{color:var(--g-muted)}
+.g-version-location{width:100%;min-width:0;color:var(--g-muted);font-size:11px}
+.g-version-location summary{cursor:pointer;width:fit-content;white-space:nowrap}
+.g-version-location code{display:block;margin-top:8px;padding:8px;background:#f5f7fa;border-radius:4px;max-height:140px;overflow:auto;white-space:normal;overflow-wrap:anywhere;line-height:1.6;font-size:10px;user-select:text}
+@media(min-width:1281px){
+  .g-version-table th,.g-version-table td{padding-right:12px;padding-left:12px}
+  .g-version-table td{padding-top:14px;padding-bottom:14px;line-height:1.6}
+  .g-version-table td:nth-child(1),.g-version-table td:nth-child(4),.g-version-table td:nth-child(5),.g-version-table td:nth-child(6),.g-version-table td:nth-child(7){white-space:nowrap}
+}
+
+/* Editable workflows and per-Episode program reports. */
+.g-workflow-editor{padding:0 22px 22px}
+.g-workflow-editor ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.g-workflow-editor li{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--g-border);border-radius:8px;min-width:0}
+.g-workflow-order{display:grid;place-items:center;flex:0 0 26px;height:26px;border-radius:50%;background:#e6f4ff;color:var(--g-primary);font-weight:600}
+.g-workflow-fields{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 14px}
+.g-workflow-fields label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--g-muted)}
+.g-workflow-fields input,.g-workflow-fields select,.g-workflow-add select{width:100%;min-width:0;height:34px;padding:5px 8px;border:1px solid var(--g-border);border-radius:5px;background:#fff;color:var(--g-text);font-size:12px}
+.g-workflow-fields input:disabled,.g-workflow-fields select:disabled{background:#f5f7fa;color:#7a8089}
+.g-workflow-fields small{grid-column:1/-1;color:var(--g-muted);line-height:1.6;font-size:11px}
+.g-workflow-manual{align-self:center;color:var(--g-muted);font-size:12px}
+.g-workflow-controls{display:flex;gap:5px;padding-top:18px}
+.g-workflow-controls button{padding:6px 9px;border:1px solid var(--g-border);border-radius:4px;background:white;font-size:11px}
+.g-workflow-controls button:disabled{opacity:.4;cursor:default}
+.g-workflow-add{display:flex;gap:10px;max-width:400px;margin-top:16px}
+.g-workflow-help{margin:12px 0 0;color:var(--g-muted);font-size:11px;line-height:1.7}
+.g-workflow-modal .g-modal-body{max-width:850px;max-height:85vh;display:flex;flex-direction:column}
+.g-workflow-dialog-content{padding:18px;overflow:auto}
+.g-workflow-dialog-content .g-workflow-editor{padding:0}
+.g-workflow-dialog-footer{display:flex;justify-content:flex-end;gap:10px;padding:14px 18px;border-top:1px solid var(--g-border)}
+.g-program-report{margin:14px 20px;padding:12px;border:1px solid var(--g-border);border-radius:6px;background:#fff}
+.g-program-report summary{cursor:pointer;font-weight:600;color:var(--g-text)}
+.g-program-report>p,.g-program-report>label{font-size:12px;line-height:1.7}
+.g-program-report table{white-space:normal;min-width:550px}
+.g-program-report td{overflow-wrap:anywhere;max-width:300px}
+.g-node-program{padding:0 22px;color:var(--g-muted);font-size:11px}
+@media(max-width:650px){.g-workflow-editor{padding:0 14px 16px}.g-workflow-editor li{flex-wrap:wrap;padding:12px;gap:8px}.g-workflow-fields{grid-template-columns:1fr}.g-workflow-controls{margin-left:34px;padding-top:0}.g-workflow-fields small{grid-column:1}.g-workflow-modal{padding:12px}.g-workflow-dialog-content{padding:12px}.g-program-report{margin:12px}}
+
+.g-qc-report-dialog{width:calc(100vw - 32px);max-width:960px!important;max-height:85vh;display:flex;flex-direction:column;gap:20px;background:#fff;color:#1f2329;border-color:#e8eaed;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.g-qc-report-dialog [data-slot="dialog-description"]{color:#646a73;line-height:1.7}
+.g-qc-report-content{min-height:0;overflow:auto;font-size:12px}
+.g-qc-report-filter{display:flex;align-items:center;gap:7px;margin-bottom:14px}
+.g-qc-report-table-wrap{width:100%;overflow-x:auto;border:1px solid #e8eaed;border-radius:6px}
+.g-qc-report-table-wrap table{width:100%;min-width:570px;border-collapse:collapse;table-layout:fixed;text-align:left}
+.g-qc-report-table-wrap th,.g-qc-report-table-wrap td{padding:12px;border-bottom:1px solid #e8eaed;vertical-align:top;overflow-wrap:anywhere;line-height:1.7}
+.g-qc-report-table-wrap th{background:#f7f8fa;color:#646a73;font-weight:500}
+.g-qc-report-table-wrap th:nth-child(1){width:12%}.g-qc-report-table-wrap th:nth-child(2){width:16%}.g-qc-report-table-wrap th:nth-child(3){width:12%}.g-qc-report-table-wrap th:nth-child(4){width:22%}.g-qc-report-table-wrap th:nth-child(5){width:38%}
+.g-qc-report-table-wrap tbody tr:last-child td{border-bottom:0}
+.g-qc-report-close{padding:8px 18px;border:1px solid #d9dce1;border-radius:6px;background:#fff;color:#1f2329;font-size:12px;cursor:pointer}
+@media(max-width:600px){.g-qc-report-dialog{width:calc(100vw - 24px);padding:20px 16px;max-height:90vh}}

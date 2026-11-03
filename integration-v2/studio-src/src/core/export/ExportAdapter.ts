@@ -1,3 +1,4 @@
+import type { DatasetStats } from '../analysis/StatsService';
 /**
  * Platform-agnostic export adapter interface.
  * Web implementation writes to an in-memory map then packages (ZIP/tar.gz) or writes to directory.
@@ -7,6 +8,8 @@
 export type ExportFormat = 'zip' | 'directory';
 
 export interface ExportAdapter {
+  computeVisualStats?(episodeIndex: number, range: { startFrame: number; endFrame: number }, signal?: AbortSignal): Promise<DatasetStats>;
+  convertVideoSegment?(bytes: Uint8Array, trim?: { fromSec?: number; toSec?: number }, signal?: AbortSignal): Promise<{ buffer: ArrayBuffer; duration: number }>;
   writeFile(path: string, content: Uint8Array): void | Promise<void>;
   readFile(path: string): Promise<Uint8Array>;
   createDirectory(path: string): void | Promise<void>;

@@ -118,6 +118,8 @@ def skip_episode(request: Request, payload: dict):
         row = _row(db, str(p), episode)
     if row and row['status'] == 'approved' and user['role'] == 'annotator':
         raise HTTPException(403, '已通过的数据需要审核员处理')
+    from .workspaces import assert_writable
+    assert_writable(request, str(p))
     set_exclusion(str(p), episode, payload.get('skipped'), payload.get('reason'), user['username'])
     return status_get(request, str(p), episode)
 

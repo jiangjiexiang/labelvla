@@ -213,6 +213,10 @@ export class ExportService {
       options.splitsConfig && episodesForMeta.length > 0
         ? splitsIndicesToInfoSplits(computeSplits(episodesForMeta, options.splitsConfig))
         : undefined;
+    const visualStats = (...args: Parameters<typeof computeTrimVisualStats>) =>
+      this.adapter.computeVisualStats
+        ? this.adapter.computeVisualStats(args[2], args[3], args[4])
+        : computeTrimVisualStats(...args);
     let stats: DatasetStats | undefined;
     if (options.includeData && episodesForMeta.length > 0) {
       reportPhaseStart(1, 'Validating training statistics...', 'metadata');
@@ -223,7 +227,7 @@ export class ExportService {
               getEpisodeStats: async (episode: EpisodeMetadata) => {
                 const range = trimPlan.ranges.get(episode.episode_index);
                 if (range) {
-                  return computeTrimVisualStats(
+                  return visualStats(
                     this.dataLoader,
                     info,
                     episode.episode_index,
@@ -232,7 +236,7 @@ export class ExportService {
                   );
                 }
                 if (!needsVisualStats) return undefined;
-                return computeTrimVisualStats(
+                return visualStats(
                   this.dataLoader,
                   info,
                   episode.episode_index,

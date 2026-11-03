@@ -29,9 +29,9 @@ router = APIRouter()
 
 TASK_TYPES = {
     'video_annotation': [('preprocess', '预处理'), ('annotate', '人工标注'),
-                         ('qc', '标注质检'), ('package', '生产打包'), ('compile', '应用编译')],
-    'preprocess': [('preprocess', '预处理'), ('package', '生产打包')],
-    'qc': [('qc', '标注质检'), ('package', '生产打包')],
+                         ('qc', '人工验收'), ('program_qc', '程序质检'), ('compile', '版本发布')],
+    'preprocess': [('preprocess', '预处理')],
+    'qc': [('qc', '人工验收'), ('program_qc', '程序质检')],
 }
 TASK_TYPE_LABEL = {'video_annotation': '视频标注任务',
                    'preprocess': '数据预处理任务', 'qc': '数据质检任务'}
@@ -121,6 +121,21 @@ def init_schema():
             db.execute('ALTER TABLE tasks ADD COLUMN assignee TEXT')
         if 'assignee_name' not in columns:
             db.execute('ALTER TABLE tasks ADD COLUMN assignee_name TEXT')
+        from .workspaces import migrate as migrate_workspaces
+        migrate_workspaces(db)
+        node_columns = {r['name'] for r in db.execute('PRAGMA table_info(task_nodes)')}
+        for column in ('program','result_json'):
+            if column not in node_columns:
+                db.execute(f'ALTER TABLE task_nodes ADD COLUMN {column} TEXT')
+        # Migrate only unexecuted package nodes, preserving completed history.
+        candidates = db.execute("SELECT n.task_id FROM task_nodes n JOIN tasks t ON t.id=n.task_id WHERE n.key='package' AND n.status='waiting' AND t.status IN ('pending','waiting_human','failed') AND NOT EXISTS (SELECT 1 FROM task_nodes other WHERE other.task_id=n.task_id AND other.key='program_qc')").fetchall()
+        for row in candidates:
+            db.execute("UPDATE task_nodes SET key='program_qc',name='程序质检',program='annotation_audit' WHERE task_id=? AND key='package'",(row['task_id'],))
+            _event(db,row['task_id'],'program_qc','未执行的生产打包已调整为程序质检；完整数据打包由版本发布节点执行')
+        from .workflow import LEGACY_PROGRAMS
+        for key,program in LEGACY_PROGRAMS.items():
+            db.execute('UPDATE task_nodes SET program=? WHERE key=? AND program IS NULL',(program,key))
+
 
 
 # ── 工具 ──────────────────────────────────────────────────
@@ -305,7 +320,7 @@ def _node_package(ctx, progress):
 
 
 def _node_compile(ctx, progress):
-    p = ctx['path']
+    p = Path(ctx['dataset'])  # Version numbers belong to the original dataset lineage.
     with db_session() as db:
         task = db.execute('SELECT export_dir FROM tasks WHERE id=?', (ctx['task_id'],)).fetchone()
     out = Path(task['export_dir']) if task and task['export_dir'] else _exports_dir(ctx['task_id'])
@@ -345,11 +360,16 @@ def _node_compile(ctx, progress):
                     number += 1
             # Only new paths are written. A failed attempt leaves its directory reserved.
             shutil.copytree(out, release / 'snapshot')
+            dataset_dir = f'{p.name}_{version}'
+            (release / 'snapshot' / 'dataset').rename(release / 'snapshot' / dataset_dir)
+            release_manifest = json.loads((release / 'snapshot/manifest.json').read_text())
+            release_manifest.update(version=version, dataset_dir=dataset_dir, original_dataset=str(p))
+            (release / 'snapshot/manifest.json').write_text(json.dumps(release_manifest, ensure_ascii=False, indent=2))
             bundle = release / 'dataset.tar.gz'
-            with source.open('rb') as src, bundle.open('xb') as dst:
-                shutil.copyfileobj(src, dst)
-            if _file_sha256(bundle) != digest:
-                raise RuntimeError('版本导出校验失败')
+            with tarfile.open(bundle, 'x:gz') as archive:
+                archive.add(release / 'snapshot/manifest.json', arcname='manifest.json')
+                archive.add(release / 'snapshot' / dataset_dir, arcname=dataset_dir)
+            digest = _file_sha256(bundle)
             db.execute(
                 'INSERT INTO versions(dataset,dataset_name,version,note,episodes,size_gb,status,task_id,manifest,created_by,created_at,bundle_path,source_bundle) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 (str(p), p.name, version, f'任务 {ctx["task_id"]} · {ctx["name"]}', int(manifest['episodes']), round(bundle.stat().st_size / 1024**3, 6),
@@ -451,7 +471,22 @@ def _run_task(task_id: int):
                                (int((_i + pct / 100) / total * 100), now_iso(), task_id))
 
             try:
-                result = NODE_RUNNERS[n['key']](ctx, progress)
+                if n['program']:
+                    from .workflow import run as run_program
+                    result = run_program(ctx, progress)
+                else:
+                    result = NODE_RUNNERS[n['key']](ctx, progress)
+                result = result or {}
+                report_dir = data_root()/'.platform/task_reports'/str(task_id)
+                report_dir.mkdir(parents=True,exist_ok=True)
+                import uuid
+                report_file = report_dir/f'{n["key"]}_{uuid.uuid4().hex}.json'
+                report_file.write_text(json.dumps(result,ensure_ascii=False,indent=2,default=str))
+                result['report_path'] = str(report_file)
+                with db_session() as db:
+                    db.execute('UPDATE task_nodes SET result_json=? WHERE task_id=? AND key=?',(json.dumps(result,ensure_ascii=False,default=str),task_id,n['key']))
+                if result.get('passed') is False:
+                    raise RuntimeError(str(result.get('message') or '程序质检未通过'))
             except Exception as exc:
                 with db_session() as db:
                     db.execute("UPDATE task_nodes SET status='failed', message=? WHERE task_id=? AND key=?",
@@ -489,7 +524,7 @@ def _load_task_ctx(task_id: int) -> dict:
     if row is None:
         raise RuntimeError('任务不存在')
     return {'task_id': row['id'], 'name': row['name'], 'dataset': row['dataset'],
-            'path': Path(row['dataset']), 'user': row['created_by']}
+            'path': Path(row['edited_dataset'] or row['workspace_path'] or row['source_dataset'] or row['dataset']), 'user': row['created_by']}
 
 
 # ── 接口 ──────────────────────────────────────────────────
@@ -545,6 +580,72 @@ def task_stats(request: Request):
     return _stats()
 
 
+@router.get('/api/bridge/workflow/catalog')
+def workflow_catalog(request: Request):
+    require(request)
+    from .workflow import catalog
+    return catalog()
+
+
+@router.put('/api/bridge/tasks/{task_id}/workflow')
+def edit_workflow(request: Request, task_id: int, payload: dict):
+    user=require(request,'admin','reviewer')
+    from .workflow import normalize
+    with db_session() as db:
+        db.execute('BEGIN IMMEDIATE')
+        task=db.execute('SELECT * FROM tasks WHERE id=?',(task_id,)).fetchone()
+        if not task:raise HTTPException(404,'任务不存在')
+        if task['status'] not in ('waiting_human','failed') or _running['task_id']==task_id:
+            raise HTTPException(409,'只有暂停等待人工或已失败的任务可以编辑后续流程')
+        old=[dict(row) for row in db.execute('SELECT * FROM task_nodes WHERE task_id=? ORDER BY seq',(task_id,))]
+        expected=payload.get('expected_nodes')
+        current=[{k:row[k] for k in ('key','name','program','status')} for row in old]
+        if expected!=current:
+            raise HTTPException(409,'流程状态已变化，请刷新后重新编辑')
+        nodes=normalize(payload.get('workflow'),task['task_type'],legacy_keys=[row['key'] for row in old if row['status']=='done' and row['key']=='package'])
+        if any(n['key']=='annotate' for n in nodes) and not task['assignee']:
+            raise HTTPException(400,'此任务没有标注负责人，不能添加人工标注节点')
+        prefix=0
+        for row in old:
+            if row['status']!='done':break
+            prefix+=1
+        locked=prefix+(1 if len(old)>prefix and old[prefix]['status']=='blocked' else 0)
+        for i in range(locked):
+            if i>=len(nodes) or any(nodes[i][key]!=old[i][key] for key in ('key','name','program')):
+                raise HTTPException(409,'已完成节点和当前人工节点不能改动，只能编辑后续流程')
+        if len(nodes)<=prefix:
+            raise HTTPException(400,'至少保留一个后续节点')
+        if db.execute("SELECT 1 FROM studio_drafts WHERE task_id=? AND status='uploading'",(task_id,)).fetchone():
+            raise HTTPException(409,'Studio 正在保存，请稍后再编辑流程')
+        db.execute('DELETE FROM task_nodes WHERE task_id=? AND seq>=?',(task_id,locked))
+        db.executemany('INSERT INTO task_nodes(task_id,seq,key,name,status,program) VALUES (?,?,?,?,?,?)',
+                       [(task_id,i,node['key'],node['name'],'waiting',node['program']) for i,node in enumerate(nodes) if i>=locked])
+        db.execute('UPDATE tasks SET export_dir=NULL,updated_at=?,progress=? WHERE id=?',(now_iso(),int(100*prefix/len(nodes)),task_id))
+        _event(db,task_id,None,'编辑后续流程：'+' → '.join(node['name'] for node in nodes),actor=user['username'])
+    return get_task(request,task_id)
+
+
+@router.post('/api/bridge/tasks/{task_id}/rework')
+def rework_task(request: Request, task_id: int):
+    user=require(request)
+    with db_session() as db:
+        db.execute('BEGIN IMMEDIATE')
+        task=db.execute('SELECT * FROM tasks WHERE id=?',(task_id,)).fetchone()
+        if not task:raise HTTPException(404,'任务不存在')
+        if user['role'] not in ('admin','reviewer') and user['username']!=task['assignee']:
+            raise HTTPException(403,'只有任务负责人或管理员可以返回标注修正')
+        if task['status']!='failed' or _running['task_id']==task_id:
+            raise HTTPException(409,'只有已失败的任务可以返回标注修正')
+        node=db.execute("SELECT seq FROM task_nodes WHERE task_id=? AND key='annotate'",(task_id,)).fetchone()
+        if not node:raise HTTPException(400,'此流程没有人工标注节点，请新建标注任务修正数据')
+        db.execute("UPDATE task_nodes SET status='waiting',progress=0,message=NULL,started_at=NULL,finished_at=NULL,result_json=NULL WHERE task_id=? AND seq>=?",(task_id,node['seq']))
+        total=db.execute('SELECT COUNT(*) FROM task_nodes WHERE task_id=?',(task_id,)).fetchone()[0]
+        db.execute("UPDATE tasks SET status='pending',current_node=NULL,error=NULL,export_dir=NULL,progress=?,updated_at=? WHERE id=?",(int(100*node['seq']/total),now_iso(),task_id))
+        _event(db,task_id,'annotate','程序检查未通过，返回标注修正',actor=user['username'])
+    enqueue(task_id)
+    return get_task(request,task_id)
+
+
 @router.get('/api/bridge/tasks/{task_id}')
 def get_task(request: Request, task_id: int):
     require(request)
@@ -558,7 +659,10 @@ def get_task(request: Request, task_id: int):
                             (task_id,)).fetchall()
     d = dict(row)
     d['task_type_label'] = TASK_TYPE_LABEL.get(d['task_type'], d['task_type'])
-    d['nodes'] = [dict(n) for n in nodes]
+    from .workflow import catalog
+    names={item['id']:item['name'] for item in catalog()['programs']}
+    names.update(publish_dataset='完整数据集版本发布',export_dataset='完整数据导出')
+    d['nodes'] = [{**dict(n),'program_name':names.get(n['program'],'')} for n in nodes]
     d['events'] = [dict(e) for e in events]
     return d
 
@@ -594,9 +698,22 @@ def create_task(request: Request, payload: dict):
         if person is None or person['disabled'] or person['role'] not in ('admin', 'reviewer') or (person['expires_at'] and person['expires_at'] <= now_iso()):
             raise HTTPException(400, '审核负责人必须是有效的管理员或审核员')
         reviewer_name = person['display_name'] or person['username']
-    nodes = TASK_TYPES[task_type]
+    source = p
+    base_version_id = payload.get('base_version_id')
+    if base_version_id is not None:
+        with db_session() as db:
+            version_row = db.execute('SELECT * FROM versions WHERE id=? AND dataset=?', (base_version_id, str(p))).fetchone()
+        if version_row is None:
+            raise HTTPException(400, '起始版本不属于此数据集')
+        source = _version_dataset(dict(version_row))
+        if source is None:
+            raise HTTPException(409, '此历史版本没有完整数据快照，无法继续编辑')
+    from .workflow import normalize
+    nodes = normalize(payload.get('workflow'),task_type)
+    if any(node['key']=='annotate' for node in nodes) and not assignee:
+        raise HTTPException(400,'请选择标注负责人')
     try:
-        info = json.loads((p / 'meta' / 'info.json').read_text(encoding='utf8'))
+        info = json.loads((source / 'meta' / 'info.json').read_text(encoding='utf8'))
         episodes = int(info.get('total_episodes') or 0)
     except Exception:
         episodes = 0
@@ -610,11 +727,12 @@ def create_task(request: Request, payload: dict):
              payload.get('base_task_id'), str(payload.get('description') or ''),
              'pending', episodes, user['username'], now, now))
         task_id = cur.lastrowid
+        db.execute('UPDATE tasks SET source_dataset=? WHERE id=?', (str(source), task_id))
         db.execute('UPDATE tasks SET assignee=?, assignee_name=? WHERE id=?', (assignee or None, assignee_name, task_id))
         db.execute('UPDATE tasks SET reviewer=?, reviewer_name=? WHERE id=?', (reviewer or None, reviewer_name, task_id))
         db.executemany(
-            'INSERT INTO task_nodes(task_id, seq, key, name, status) VALUES (?,?,?,?,?)',
-            [(task_id, i, key, label, 'waiting') for i, (key, label) in enumerate(nodes)])
+            'INSERT INTO task_nodes(task_id, seq, key, name, status, program) VALUES (?,?,?,?,?,?)',
+            [(task_id, i, node['key'], node['name'], 'waiting', node['program']) for i,node in enumerate(nodes)])
         _event(db, task_id, None, f'任务创建 · {TASK_TYPE_LABEL[task_type]} · {p.name}', actor=user['username'])
     enqueue(task_id)
     from .notifications import schedule_published
@@ -676,11 +794,16 @@ def complete_node(request: Request, task_id: int, key: str, payload: dict = None
         if user['role'] != 'admin':
             if user['username'] != owner or (key == 'qc' and user['role'] != 'reviewer'):
                 raise HTTPException(403, '只有任务指定负责人或管理员可确认该节点')
+        if decision == 'approved' and key == 'annotate':
+            if db.execute("SELECT 1 FROM studio_drafts WHERE task_id=? AND status='uploading'", (task_id,)).fetchone():
+                raise HTTPException(409, 'Studio 正在保存数据，请完成保存后再提交审核')
+            if task['workspace_path'] and not task['edited_dataset']:
+                raise HTTPException(409, '请先在 Studio 点击保存修改，再提交审核')
         if decision == 'rejected':
             annotate = db.execute("SELECT seq FROM task_nodes WHERE task_id=? AND key='annotate'", (task_id,)).fetchone()
             seq = annotate['seq'] if annotate else node['seq']
-            db.execute("UPDATE task_nodes SET status='waiting',progress=0,message=NULL,started_at=NULL,finished_at=NULL WHERE task_id=? AND seq>=?", (task_id, seq))
-            db.execute("UPDATE tasks SET status='pending',current_node=NULL,progress=?,updated_at=? WHERE id=?", (int(100*seq/max(1,db.execute('SELECT COUNT(*) FROM task_nodes WHERE task_id=?',(task_id,)).fetchone()[0])), now_iso(), task_id))
+            db.execute("UPDATE task_nodes SET status='waiting',progress=0,message=NULL,started_at=NULL,finished_at=NULL,result_json=NULL WHERE task_id=? AND seq>=?", (task_id, seq))
+            db.execute("UPDATE tasks SET status='pending',current_node=NULL,export_dir=NULL,error=NULL,progress=?,updated_at=? WHERE id=?", (int(100*seq/max(1,db.execute('SELECT COUNT(*) FROM task_nodes WHERE task_id=?',(task_id,)).fetchone()[0])), now_iso(), task_id))
             _event(db, task_id, key, f'质检打回：{reason}', 'warn', actor=user['username'])
         else:
             message = ('视频质检通过' if key == 'qc' else '人工标注完成') + f' · {user["username"]}'
@@ -812,7 +935,47 @@ def list_versions(request: Request, dataset: str = ''):
                               (str(p),)).fetchall()
         else:
             rows = db.execute('SELECT * FROM versions ORDER BY id DESC LIMIT 200').fetchall()
-    return {'versions': [dict(r) for r in rows]}
+    output = []
+    for row in rows:
+        item = dict(row)
+        path = _version_dataset(item)
+        item['dataset_path'] = str(path) if path else None
+        item['download_url'] = f'/api/bridge/versions/{item["id"]}/download' if item.get('bundle_path') and Path(item['bundle_path']).is_file() else None
+        output.append(item)
+    return {'versions': output}
+
+
+def _version_dataset(row):
+    bundle_path = row.get('bundle_path')
+    if not bundle_path:
+        return None
+    snapshot = Path(bundle_path).parent / 'snapshot'
+    if not snapshot.resolve().is_relative_to(data_root().resolve()):
+        return None
+    manifest = snapshot / 'manifest.json'
+    if manifest.is_file():
+        doc = json.loads(manifest.read_text())
+        name = doc.get('dataset_dir', 'dataset')
+        if not isinstance(name, str) or Path(name).name != name or name in ('.', '..'):
+            return None
+        path = snapshot/name
+        if (path/'meta/info.json').is_file():
+            return path
+    return None
+
+
+@router.get('/api/bridge/versions/{version_id}/download')
+def download_version(request: Request, version_id: int):
+    require(request)
+    with db_session() as db:
+        row = db.execute('SELECT * FROM versions WHERE id=?', (version_id,)).fetchone()
+    if not row or not row['bundle_path']:
+        raise HTTPException(404, '版本文件不存在')
+    path = Path(row['bundle_path'])
+    if not path.resolve().is_relative_to(data_root().resolve()) or not path.is_file():
+        raise HTTPException(404, '版本文件不存在')
+    from fastapi.responses import FileResponse
+    return FileResponse(path, media_type='application/gzip', filename=f'{row["dataset_name"]}_{row["version"]}.tar.gz')
 
 
 def _recover_interrupted():

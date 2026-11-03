@@ -22,7 +22,7 @@ type Context = {
   segments: Segment[]; selected: number; select: (i: number) => void; selectedBox: number; selectBox: (i: number) => void;
   boxLabel: string; setBoxLabel: (s: string) => void; dirty: boolean; error: string; saving: boolean; track: boolean; setTrack: (b: boolean) => void;
   showMasks: boolean; setShowMasks: (b: boolean) => void;
-  update: (items: Segment[]) => void; save: () => Promise<void>; pause: () => void; jump: (frame: number) => void;
+  update: (items: Segment[]) => void; save: () => Promise<boolean>; pause: () => void; jump: (frame: number) => void;
   cameras: string[]; sam: SamState; setSamMode: (b: boolean) => void; setSamCamera: (c: string) => void;
   samPoint: (x: number, y: number, positive: boolean) => Promise<void>;
   samPropagate: () => Promise<void>; samDiscard: () => Promise<void>;
@@ -200,13 +200,15 @@ export function AnnotationProvider({children}: {children: ReactNode}) {
     update(segments.map((it, i) => (i === index && it.problem ? {...it, problem: {...it.problem, fixed_at: new Date().toISOString()}} : it)));
   };
   const save = async () => {
-    if (!dataset || episode === null || !dirty || saving) return;
+    if (!dirty) return true;
+    if (!dataset || episode === null || saving) return false;
     setSaving(true); setError('');
     try {
       const r = await fetch(`/api/bridge/segments?dataset=${encodeURIComponent(dataset)}&episode=${episode}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({revision, segments})});
       const data = await r.json(); if (!r.ok) throw new Error(data.detail || '保存失败');
       setSegments(data.segments); setRevision(data.revision); setDirty(false); setError('已保存');
-    } catch (e) {setError(e instanceof Error ? e.message : String(e));}
+      return true;
+    } catch (e) {setError(e instanceof Error ? e.message : String(e)); return false;}
     finally {setSaving(false);}
   };
   useEffect(() => {

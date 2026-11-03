@@ -141,7 +141,9 @@ async function convertSegmentWithMediabunny(
   bytes: Uint8Array,
   trim?: ConvertSegmentTrim,
   signal?: AbortSignal,
+  adapter?: ExportAdapter,
 ): Promise<{ buffer: ArrayBuffer; duration: number } | null> {
+  if (adapter?.convertVideoSegment) return adapter.convertVideoSegment(bytes, trim, signal);
   if (!bytes?.length) return null;
   assertNotAborted(signal);
   const { Input, BlobSource, ALL_FORMATS, Output, Mp4OutputFormat, BufferTarget, Conversion } =
@@ -249,7 +251,7 @@ async function exportVideosCopy(
         await ensureParentDir(adapter, path);
         const range = trimRanges?.get(ep.episode_index);
         if (range) {
-          const converted = await convertSegmentWithMediabunny(bytes, pathResult, signal);
+          const converted = await convertSegmentWithMediabunny(bytes, pathResult, signal, adapter);
           if (!converted) throw new Error(`Video conversion produced no output: ${path}`);
           await assertTrimmedVideo(converted.buffer, range, info.fps, signal);
           await adapter.writeFile(path, new Uint8Array(converted.buffer));
@@ -358,7 +360,7 @@ async function exportVideosTranscodeToV3(
             to_timestamp: duration,
           };
         } else {
-          const result = await convertSegmentWithMediabunny(bytes, trim, signal);
+          const result = await convertSegmentWithMediabunny(bytes, trim, signal, adapter);
           if (!result) {
             throw new Error(`Video conversion produced no MP4 output: ${outPath}`);
           } else {
@@ -442,7 +444,7 @@ async function exportVideosTranscodeToV2FromV3(
         const bytes = await dataLoader.readFileBytes(pathResult.path);
         const hasTrim = hasMeaningfulTrim(pathResult);
         const trim = hasTrim ? { fromSec: pathResult.fromSec, toSec: pathResult.toSec } : undefined;
-        const result = await convertSegmentWithMediabunny(bytes, trim, signal);
+        const result = await convertSegmentWithMediabunny(bytes, trim, signal, adapter);
         if (!result) {
           throw new Error(`Video conversion produced no MP4 output: ${outPath}`);
         } else {

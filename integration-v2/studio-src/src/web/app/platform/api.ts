@@ -64,12 +64,16 @@ export interface QcItem { episode: number; rule: string; severity: string; detai
 
 export type TaskStatus = 'pending' | 'running' | 'waiting_human' | 'done' | 'failed' | 'canceled';
 export type NodeStatus = 'waiting' | 'running' | 'done' | 'blocked' | 'failed' | 'skipped';
+export interface WorkflowNode { key: string; name: string; program: string | null }
+export interface WorkflowCatalog { programs: {id:string;name:string;description:string}[]; nodes:WorkflowNode[]; templates:Record<string,WorkflowNode[]> }
 export interface TaskNode {
+  program?: string | null; program_name?: string; result_json?: string | null;
   task_id: number; seq: number; key: string; name: string; status: NodeStatus;
   progress: number; message?: string | null; started_at?: string | null; finished_at?: string | null;
 }
 export interface TaskEvent { actor?: string | null; id: number; at: string; node?: string | null; level: string; message: string }
 export interface Task {
+  workspace_path?: string | null; edited_dataset?: string | null; source_dataset?: string | null;
   assignee?: string | null; assignee_name?: string | null;
   reviewer?: string | null; reviewer_name?: string | null;
   id: number; name: string; dataset: string; dataset_name: string; task_type: string; task_type_label: string;
@@ -88,6 +92,7 @@ export interface EpisodeRow {
 }
 export interface VideoRow { path: string; camera: string; episode: number | null; size_mb: number; name: string }
 export interface VersionRow {
+  dataset_path?: string | null; download_url?: string | null;
   id: number; dataset: string; dataset_name: string; version: string; note: string | null;
   episodes: number; size_gb: number | null; status: string; task_id: number | null;
   manifest: string | null; created_by: string; created_at: string;
@@ -106,9 +111,9 @@ export const NODE_STATUS_LABEL: Record<NodeStatus, string> = {
   failed: '失败', skipped: '已跳过',
 };
 export const TASK_TYPE_OPTIONS: { value: string; label: string; desc: string }[] = [
-  { value: 'video_annotation', label: '视频标注任务', desc: '预处理 → 人工标注 → 质检 → 打包 → 编译' },
-  { value: 'preprocess', label: '数据预处理任务', desc: '预处理 → 打包' },
-  { value: 'qc', label: '数据质检任务', desc: '质检 → 打包' },
+  { value: 'video_annotation', label: '视频标注任务', desc: '预处理 → 人工标注 → 人工验收 → 程序质检 → 版本发布' },
+  { value: 'preprocess', label: '数据预处理任务', desc: '预处理' },
+  { value: 'qc', label: '数据质检任务', desc: '人工验收 → 程序质检' },
 ];
 
 export const STATUS_LABEL: Record<EpisodeStatus, string> = {
@@ -170,11 +175,14 @@ export const api = {
   },
   task: (id: number) => get<TaskDetail>(`/api/bridge/tasks/${id}`),
   taskStats: () => get<TaskStats>('/api/bridge/tasks/stats'),
-  createTask: (payload: { name: string; dataset: string; task_type: string; create_mode?: string; description?: string; assignee?: string; reviewer?: string; base_task_id?: number | null }) =>
+  createTask: (payload: { name: string; dataset: string; task_type: string; create_mode?: string; description?: string; assignee?: string; reviewer?: string; base_task_id?: number | null; base_version_id?: number | null; workflow?: WorkflowNode[] }) =>
     post<TaskDetail>('/api/bridge/tasks', payload),
   cancelTask: (id: number) => post<TaskDetail>(`/api/bridge/tasks/${id}/cancel`),
   retryTask: (id: number) => post<TaskDetail>(`/api/bridge/tasks/${id}/retry`),
   completeNode: (id: number, key: string, decision: 'approved' | 'rejected' = 'approved', reason?: string) => post<TaskDetail>(`/api/bridge/tasks/${id}/nodes/${key}/complete`, { decision, reason }),
+  workflowCatalog: () => get<WorkflowCatalog>('/api/bridge/workflow/catalog'),
+  updateWorkflow: (id: number, workflow: WorkflowNode[], expected_nodes: (WorkflowNode & {status:NodeStatus})[]) => request<TaskDetail>('PUT',`/api/bridge/tasks/${id}/workflow`,{workflow,expected_nodes}),
+  reworkTask: (id: number) => post<TaskDetail>(`/api/bridge/tasks/${id}/rework`),
   // episodes / videos / versions
   episodes: (dataset: string, q = '') =>
     get<EpisodesPayload>(`/api/bridge/episodes?dataset=${encodeURIComponent(dataset)}${q ? `&q=${encodeURIComponent(q)}` : ''}`),

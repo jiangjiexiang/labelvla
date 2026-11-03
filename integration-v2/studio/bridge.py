@@ -117,7 +117,9 @@ def bridge_read_segments(dataset: str, episode: int):
         return {'episode': episode, 'length': length, 'revision': revision(store), 'segments': segments}
 
 @app.post('/api/bridge/segments')
-def bridge_write_segments(dataset: str, episode: int, payload: dict):
+def bridge_write_segments(request: Request, dataset: str, episode: int, payload: dict):
+    from bridge_ext.workspaces import assert_writable
+    assert_writable(request, dataset)
     from bridge_ext.exclusions import excluded
     if episode in excluded(str(safe_dataset(dataset))):
         raise HTTPException(409, '该数据已跳过，请先恢复标注')
@@ -400,10 +402,12 @@ def bridge_sam_health():
 
 
 @app.post('/api/bridge/sam/finalize')
-def bridge_sam_finalize(payload: dict):
+def bridge_sam_finalize(request: Request, payload: dict):
     """把某个对象的全部 mask 落盘到 segments/masks/episode_XXXXXX/<mask_key>/,
     之后预览不再依赖 SAM 会话。"""
     dataset = str(payload.get('dataset') or '')
+    from bridge_ext.workspaces import assert_writable
+    assert_writable(request, dataset)
     episode = int(payload.get('episode', -1))
     camera = payload.get('camera') or None
     oid = int(payload.get('object_id'))
@@ -467,10 +471,10 @@ async def require_login(request: Request, call_next):
 # ── 平台化扩展注册槽(Wave 0):各 bridge_ext 模块在此 register(app) ──
 from bridge_ext import auth as _ext_auth, users as _ext_users
 from bridge_ext import ledger as _ext_ledger, status as _ext_status, \
-    dictionary as _ext_dict, qc as _ext_qc, dashboard as _ext_dash, tasks as _ext_tasks
+    dictionary as _ext_dict, qc as _ext_qc, dashboard as _ext_dash, tasks as _ext_tasks, workspaces as _ext_workspaces
 _ext_auth.register(app)
 _ext_users.register(app)
-for _m in (_ext_ledger, _ext_status, _ext_dict, _ext_qc, _ext_dash, _ext_tasks):
+for _m in (_ext_ledger, _ext_status, _ext_dict, _ext_qc, _ext_dash, _ext_tasks, _ext_workspaces):
     _m.register(app)
 
 

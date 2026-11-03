@@ -141,7 +141,7 @@ LABEL org.opencontainers.image.source="https://github.com/jiangjiexiang/labelvla
 ```text
 V1.0/
   snapshot/
-    dataset/       # 可单独使用的完整数据集副本
+    <dataset-name>_V1.0/ # 可单独使用的完整数据集副本
     manifest.json  # 文件清单、SHA-256、跳过标记和审核状态
   dataset.tar.gz   # 同一完整数据包的压缩归档
 ```
@@ -151,3 +151,17 @@ V1.0/
 文件逐个复制并核对 SHA-256。完整副本加压缩包会额外占用磁盘空间；打包暂存产物在 `.platform/exports/`，目前不自动删除。
 
 旧的标注包不会自动变成完整数据包；历史遗失的数据无法据此恢复。备份时同时保存 releases 目录和平台数据库。
+
+## 10. Studio 修改与视频裁剪
+
+任务副本、裁剪保存和版本使用方式见 [数据集版本](dataset-versions.md)。升级源码并构建前端后，安装服务器视频工具：
+
+```bash
+bash scripts/setup-version-export.sh labelvla-studio-integrated
+```
+
+脚本安装固定版本的 `imageio-ffmpeg==0.6.0`，将当前平台的 FFmpeg 复制到 `/data/.platform/tools/ffmpeg`。这一路径位于持久化数据挂载中，重建容器不会丢失。跨 CPU 架构迁移时，请在目标机器重新运行脚本；也可通过环境变量 `LABELVLA_FFMPEG` 指定已有 FFmpeg。
+
+视频裁剪和保留帧统计在服务器处理，支持内网 HTTP 使用及 AV1/H.264 源视频。保存完成前不会把半成品切换为任务数据；服务重启时，未完成的保存会标记中断，可以重新保存。保存结束后才可提交任务审核。
+
+任务初始副本保存在 `.platform/workspaces/`，编辑结果保存在 `.platform/drafts/`，发布版本保存在 `.platform/releases/`。目前不会自动删除这些目录，请预留完整数据副本所需空间。

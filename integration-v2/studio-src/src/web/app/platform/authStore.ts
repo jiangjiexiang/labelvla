@@ -33,12 +33,9 @@ export function initAuth(): Promise<void> {
     initPromise = api
       .me()
       .then((user) => setAuth({ user, ready: true }))
-      .catch((e) => {
-        // 后端认证接口还没部署(404):放行,登录守卫等 Agent A 落地后自动生效
-        const status = (e as { status?: number })?.status;
-        if (status === 404 || status === 501) setAuth({ user: null, ready: true, bypass: true });
-        else setAuth({ user: null, ready: true });
-      });
+      // 认证接口失败一律按未登录处理并落到登录页;不再用 404 旁路放行,
+      // 否则后端只要抖一次,整个数据面就是裸的。
+      .catch(() => setAuth({ user: null, ready: true, bypass: false }));
   }
   return initPromise;
 }

@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 from fastapi import HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.routing import Mount
 from labelme.lerobot_server.app import create_app
@@ -440,6 +440,28 @@ def bridge_mask_file(dataset: str, episode: int, key: str, frame: int):
     if not p.is_file():
         raise HTTPException(404, 'mask 不存在')
     return FileResponse(p, headers={'Cache-Control': 'private, max-age=3600'})
+
+
+# ── 鉴权闸门:数据面(/file /index /segments /mask_file /sam)以及上游引擎自带的
+#    (/api/fs /api/datasets /api/episode/*)历史上都没有登录校验,任何能访问端口的人
+#    都能读走甚至覆盖标注。这里在中间件里统一补上,不逐个改路由签名。
+#    静态资源挂在 '/' 不走 /api/ 前缀;登录与探活接口按白名单放行。
+PUBLIC_PATHS = frozenset({
+    '/api/health',              # 容器/探活
+    '/api/bridge/auth/login',   # 登录本身
+    '/api/bridge/auth/logout',  # 会话已过期时点退出不应再报 401
+    '/api/bridge/sam/health',   # 外部 SAM 服务状态
+})
+
+
+@app.middleware('http')
+async def require_login(request: Request, call_next):
+    path = request.url.path
+    if path.startswith('/api/') and path not in PUBLIC_PATHS:
+        from bridge_ext.auth import current_user
+        if current_user(request) is None:
+            return JSONResponse({'detail': '未登录或会话已过期'}, status_code=401)
+    return await call_next(request)
 
 
 # ── 平台化扩展注册槽(Wave 0):各 bridge_ext 模块在此 register(app) ──

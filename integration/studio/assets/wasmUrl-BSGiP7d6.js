@@ -1,1 +1,0 @@
-import{t as e}from"./parquet-wasm-iT2V1gJo.js";export{e as wasmUrl};

@@ -2,7 +2,7 @@
 
 LabelVLA 用来管理和标注机器人数据，支持 LeRobot v2.x / v3.0 格式。基于 LabelVLA 和 LeRobot Studio 开发，提供多相机视频播放、动作片段划分、文本描述、目标框和 SAM 辅助分割。
 
-任务分别指定标注人和审核人。标注完成后，审核人查看视频，通过后再打包发布；有问题就打回重标。每次发布另存一份完整数据集，保留旧版本。
+任务分别指定标注人和审核人。标注完成后，审核人查看视频，通过后再打包发布；有问题就打回重标。发布任务时自动创建 output 版本副本，后续标注和保存直接写入该版本；审核通过后锁定，保留旧版本。
 
 [部署文档](docs/deployment.md) · [GitHub 源码](https://github.com/jiangjiexiang/labelvla) · [Docker 镜像](https://github.com/users/jiangjiexiang/packages/container/package/labelvla)
 
@@ -50,7 +50,7 @@ SAM 推理服务独立部署，不包含在平台镜像内。当前介绍视频�
 4. 审核人查看视频；通过后继续，打回后重新标注。
 5. 打包并发布新版本，保存完整数据包和文件校验清单。
 
-`V1.0`、`V2.0` 表示发布顺序。新版本不会覆盖旧版本，但 V1.0 不一定是采集原始数据，原始数据需要单独备份。
+`V1.0`、`V2.0` 表示发布顺序。新版本不会覆盖旧版本，但 V1.0 不一定是采集原始数据，原始数据保留在 data；任务版本保存到 output/数据集名/数据集名vN。
 
 ## 页面截图
 
@@ -82,30 +82,37 @@ SAM 推理服务独立部署，不包含在平台镜像内。当前介绍视频�
 
 ## 部署
 
-目前使用单机 Docker 部署。镜像 `ghcr.io/jiangjiexiang/labelvla:0.2.1` 提供 Linux amd64 基础环境，平台代码和数据通过宿主机目录挂载。
+前后端使用根目录 Dockerfile 和 Compose 一起构建，不再依赖旧镜像内的隐藏源码。执行：
 
-**仅拉取镜像还不能完整运行平台**，需要准备代码、构建前端并挂载数据目录。具体步骤见[部署、更新与迁移](docs/deployment.md)。
+```bash
+mkdir -p data/.platform output
+bash scripts/start.sh
+```
+
+浏览器访问 `http://服务器IP:8002/`。更新源码后再次执行同一命令。配置、测试和迁移方法见 [部署文档](docs/deployment.md)。
 
 ```text
 labelvla-docker/
-├── integration-v2/
-│   ├── studio-src/       # 前端源码
-│   └── studio/           # 前端构建结果与 Python 后端
-│       ├── bridge.py
-│       └── bridge_ext/   # 用户、任务、质检和版本等接口
-├── labelVLA-main/        # LabelVLA 基础代码
-├── data/                # 数据集和运行数据，不提交 Git
-└── docs/                # 文档与截图
+├── frontend/             # Studio 前端源码，dist 为构建产物
+├── backend/
+│   ├── bridge.py         # 统一 Web 服务入口
+│   ├── bridge_ext/       # 用户、任务、保存和版本接口
+│   └── labelme/          # LabelVLA 数据与标注引擎
+├── tests/backend/        # 独立数据与任务流程测试
+├── data/                 # 原始数据与平台数据库
+├── output/               # 数据集名/数据集名vN
+├── Dockerfile            # 完整前后端镜像
+├── compose.yaml          # 挂载、端口与运行配置
+└── scripts/              # 构建、启动、检查与测试入口
 ```
 
-标注保存在数据集的 `segments/` 中，平台数据库位于 `/data/.platform/platform.db`。前端 `studio/assets/` 是构建产物，不纳入 Git。
+标注保存在 output 版本的 `segments/` 中，平台数据库位于 `data/.platform/platform.db`。data、output、node_modules 和前端构建产物均不提交 Git。
 
 钉钉通知模块默认关闭，实际 @效果尚待验证。配置方法见[钉钉通知说明](docs/dingtalk.md)。
 
 ## 其他文档
 
 - [平台设计](docs/platform-design.md)
-- [开发任务拆分](docs/platform-plan.md)
 - [数据集版本](docs/dataset-versions.md)
 - [SAM 接口约定](docs/sam3-api-requirements.md)
 

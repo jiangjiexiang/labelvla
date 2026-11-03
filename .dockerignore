@@ -1,0 +1,17 @@
+**/node_modules
+**/.git
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.pytest_cache
+**/test-results
+**/playwright-report
+**/.playwright-browsers
+**/dist-lib
+**/.env
+**/.env.*
+**/*.log
+**/*.tar.gz
+/data
+/output
+/docs

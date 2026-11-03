@@ -1,167 +1,69 @@
-# LabelVLA 部署、更新与迁移
+# 统一部署与开发
 
-本文对应当前“基础镜像 + 平台目录挂载”的部署方式。镜像：`ghcr.io/jiangjiexiang/labelvla:0.2.1`，架构：`linux/amd64`。ARM 主机需要另外验证依赖或构建适配镜像。
+项目由一个根目录 Dockerfile 构建：Studio 前端位于 `frontend/`，LabelVLA 数据引擎和平台 API 均位于 `backend/`。运行镜像包含前后端完整代码，不依赖旧镜像里的隐含源码或宿主机构建产物。
 
-## 1. 准备环境和源码
+## 启动
 
-准备 Docker Engine、Git、Node.js 和 npm。前端声明的包管理器版本见 `integration-v2/studio-src/package.json`；建议使用与开发环境一致的版本。
-
-```bash
-git clone https://github.com/jiangjiexiang/labelvla.git labelvla-docker
-cd labelvla-docker
-mkdir -p data
-```
-
-检出包含所需平台代码的分支或提交。尚未提交、推送的服务器改动不会出现在新克隆中。
-
-GHCR 包为私有时需要先登录。使用具有包读取权限的 GitHub Token，按交互提示输入；不要填写 GitHub 账号密码。
+准备 Docker Engine 和 Docker Compose。首次启动需要联网下载 Node/Python 基础镜像、npm 依赖及 Python 依赖，不要求宿主机安装 Node。
 
 ```bash
-docker login ghcr.io -u YOUR_GITHUB_USERNAME
-docker pull ghcr.io/jiangjiexiang/labelvla:0.2.1
+cd /path/to/labelvla-docker
+mkdir -p data/.platform output
+bash scripts/start.sh
+bash scripts/check.sh
 ```
 
-## 2. 构建前端
+默认地址 `http://服务器IP:8002/`，容器名 `labelvla-studio-integrated`。更改端口或运行用户：
 
 ```bash
-cd integration-v2/studio-src
-npm ci
-BASE_PATH=/ npm run build
-rsync -a --delete \
-  --exclude bridge.py \
-  --exclude bridge_ext \
-  --exclude __pycache__ \
-  dist/ ../studio/
-cd ../..
+LABELVLA_PORT=8002 LABELVLA_UID=$(id -u) LABELVLA_GID=$(id -g) docker compose up -d --build
 ```
 
-构建部署在网站根路径，因此必须设置 `BASE_PATH=/`。同步时必须保留 `bridge.py`、`bridge_ext/`；它们是平台后端源码，不在 `dist/` 中。执行前确认当前位于正确目录，`rsync --delete` 会删除目标中的非排除旧文件。
+确保运行用户能读 data，并能写 `data/.platform` 和 output。SAM 推理独立部署，可通过 `SAM_BASE=http://服务器:8310` 配置，默认沿用既有地址。初次初始化账号见后端 `bridge_ext/db.py`，已有数据库沿用原账号；重启后需重新登录。
 
-## 3. 放置数据并启动
+## 修改与更新
 
-将 LeRobot 数据集放在 `data/` 下，每个数据集保持完整目录结构，例如：
+- 前端：`frontend/src/`。
+- 平台后端：`backend/bridge.py`、`backend/bridge_ext/`。
+- LabelVLA 引擎：`backend/labelme/lerobot/`、`backend/labelme/lerobot_server/`。
+- Web Python 依赖：根目录 `requirements.lock`。不安装上游桌面版依赖。
 
-```text
-data/
-└── example_dataset/
-    ├── meta/info.json
-    ├── data/
-    └── videos/
-```
+修改任何一部分后，在根目录执行 `bash scripts/start.sh`，重新构建并更新服务。默认不挂载源码，单独 `docker restart` 不会加载宿主机的新代码。
 
-不同版本的数据文件组织可能不同，迁移时复制完整数据集，不手工重排。
+前端独立开发可进入 frontend，运行 `npm ci`、`BASE_PATH=/ npm run build`。构建产物只位于 `frontend/dist/`；镜像内复制到 `/app/static`，后端不会写入这个目录。
 
-在仓库根目录执行（Linux）：
+## 检查与测试
 
 ```bash
-docker run -d \
-  --name labelvla-studio-integrated \
-  --restart unless-stopped \
-  --user "$(id -u):$(id -g)" \
-  -p 8002:8000 \
-  -e PYTHONPATH=/integration/studio \
-  -v "$PWD/data:/data" \
-  -v "$PWD/integration-v2/studio:/integration/studio:ro" \
-  --entrypoint python \
-  ghcr.io/jiangjiexiang/labelvla:0.2.1 \
-  -m uvicorn bridge:app --host 0.0.0.0 --port 8000
+bash scripts/check.sh
+bash scripts/test.sh
+docker compose logs --tail 100 app
 ```
 
-确保运行用户对宿主机 `data/` 有读写权限。浏览器访问 `http://服务器IP:8002/`。已有同名容器时先检查其配置，更新代码通常只需重启，不要重复创建。
+测试镜像使用临时数据和数据库，不挂载生产 data/output，不发送真实通知。包含任务流程、保存副本、真实视频裁剪、Parquet/标注映射及版本隔离测试。健康检查只能证明服务可访问；浏览器登录、播放与保存仍需单独验证。
 
-当前首次初始化的管理员账号为 admin，初始密码为 admin；已有数据库沿用原账号。初始化逻辑请以 `bridge_ext/db.py` 为准，首次登录后按界面要求修改密码。服务重启会使内存中的登录会话失效，需要重新登录。
+## 数据与备份
 
-## 4. 可选：SAM 分割服务
+- `data/<名称>`：原始数据，容器内只读。
+- `data/.platform`：平台数据库和旧任务数据，单独读写挂载。
+- `output/<名称>/<名称>vN`：新任务完整版本，读写挂载。
 
-SAM 推理服务独立于本镜像运行，镜像不包含完整 SAM 推理部署。使用此功能前，按 [SAM 接口约定](sam3-api-requirements.md) 准备服务，创建平台容器时添加：
+完整备份包括代码、data 和 output；在无活动任务时停止服务再复制，可获得一致快照。镜像不包含数据集、平台数据库或账号密码。数据流程见 [数据集保存与版本](dataset-versions.md)。
 
-```bash
--e SAM_BASE=http://YOUR_SAM_HOST:8310
-```
+## 目录迁移对照
 
-地址必须能从平台容器内部访问。应显式配置目标地址；未配置时，当前代码可能使用开发环境默认地址。普通浏览和人工标注不依赖 SAM 推理服务。
+| 原路径 | 当前路径 |
+| --- | --- |
+| integration-v2/studio-src | frontend |
+| integration-v2/studio/bridge.py | backend/bridge.py |
+| integration-v2/studio/bridge_ext | backend/bridge_ext |
+| labelVLA-main/labelme | backend/labelme |
+| integration-v2/tests | tests/backend |
+| integration-v2/studio/assets | frontend/dist/assets（构建产物） |
 
-## 5. 检查部署结果
+上游许可证保存在 frontend/LICENSE 和 backend/LICENSE，分发时一并保留。历史部署说明已从项目删除，备份保存在项目外。
 
-```bash
-docker ps --filter name=labelvla-studio-integrated
-docker logs --tail 100 labelvla-studio-integrated
-curl -I http://127.0.0.1:8002/
-```
 
-首页返回成功只说明服务可访问。还应实际登录，选择数据集，播放视频，保存并重新加载标注，再检查审核和质检；启用 SAM 后单独验证分割与传播。
+## 构建依赖下载与缓存
 
-任务队列和登录会话目前使用内存状态。容器重启后不会自动续跑未完成任务，应检查任务状态并通过界面的重试入口恢复。
-
-## 6. 更新代码
-
-更新前先查看 `git status`，保留本地修改并备份运行数据，再获取所需分支或提交。
-
-- 后端 `studio/bridge.py` 或 `studio/bridge_ext/` 更新后：重启容器。
-- 前端 `studio-src/` 更新后：按第 2 节重新构建、同步，再重启容器。
-- 修改 Python 或系统依赖时：需要构建包含新依赖的镜像，并按原挂载配置重新创建容器；仅重启不会安装依赖。
-
-```bash
-docker restart labelvla-studio-integrated
-```
-
-当前没有在本文配置自动部署。`git pull` 不会自动构建前端或重启服务。
-
-## 7. 备份与迁移
-
-迁移需要准备三部分：镜像、完整项目代码和 `data/`。数据库、标注、导出文件均应随运行数据一起备份。为获得一致备份，在无活动任务时停止容器后复制数据；恢复前核对目录所有者和权限。
-
-新机器可以直接拉取 GHCR 镜像；无网络环境可使用：
-
-```bash
-# 源机器
-docker save -o labelvla-0.2.1.tar ghcr.io/jiangjiexiang/labelvla:0.2.1
-# 目标机器
-docker load -i labelvla-0.2.1.tar
-```
-
-镜像归档不包含挂载代码与数据。复制项目和数据后，按第 2、3 节构建并创建容器，执行第 5 节验收。不要把数据集、账号数据库或 Token 上传到 Git 仓库。
-
-## 8. 镜像仓库关联
-
-构建发布镜像时保留来源标签：
-
-```dockerfile
-LABEL org.opencontainers.image.source="https://github.com/jiangjiexiang/labelvla"
-```
-
-仓库提交与镜像标签是独立的：提交代码不会自动更新 GHCR 镜像。当前 `0.2.1` 镜像仍需要挂载平台代码；后续发布应记录对应源码提交，以便复现。
-
-## 9. 完整数据集版本
-
-每次生产打包复制源数据集的完整目录，包括视频、Parquet、meta、segments、轮廓及其他附属文件。跳过标注的原始数据仍保留，并在 manifest.json 标记排除信息；不会把它们删除或混入已完成标注数量。
-
-每次发布分别保存到 `/data/.platform/releases/<数据集路径摘要>/V<n>.0/`：
-
-```text
-V1.0/
-  snapshot/
-    <dataset-name>_V1.0/ # 可单独使用的完整数据集副本
-    manifest.json  # 文件清单、SHA-256、跳过标记和审核状态
-  dataset.tar.gz   # 同一完整数据包的压缩归档
-```
-
-新版本不覆盖旧目录。重试同一次快照的发布复用已有版本，重新打包后发布才生成新版本。复制期间不要修改源数据；发现文件变化时任务会失败，要求重新打包。当前不接受符号链接，避免意外读取目录外文件。
-
-文件逐个复制并核对 SHA-256。完整副本加压缩包会额外占用磁盘空间；打包暂存产物在 `.platform/exports/`，目前不自动删除。
-
-旧的标注包不会自动变成完整数据包；历史遗失的数据无法据此恢复。备份时同时保存 releases 目录和平台数据库。
-
-## 10. Studio 修改与视频裁剪
-
-任务副本、裁剪保存和版本使用方式见 [数据集版本](dataset-versions.md)。升级源码并构建前端后，安装服务器视频工具：
-
-```bash
-bash scripts/setup-version-export.sh labelvla-studio-integrated
-```
-
-脚本安装固定版本的 `imageio-ffmpeg==0.6.0`，将当前平台的 FFmpeg 复制到 `/data/.platform/tools/ffmpeg`。这一路径位于持久化数据挂载中，重建容器不会丢失。跨 CPU 架构迁移时，请在目标机器重新运行脚本；也可通过环境变量 `LABELVLA_FFMPEG` 指定已有 FFmpeg。
-
-视频裁剪和保留帧统计在服务器处理，支持内网 HTTP 使用及 AV1/H.264 源视频。保存完成前不会把半成品切换为任务数据；服务重启时，未完成的保存会标记中断，可以重新保存。保存结束后才可提交任务审核。
-
-任务初始副本保存在 `.platform/workspaces/`，编辑结果保存在 `.platform/drafts/`，发布版本保存在 `.platform/releases/`。目前不会自动删除这些目录，请预留完整数据副本所需空间。
+Python 依赖默认从阿里云 PyPI 镜像安装，可用构建参数 PIP_INDEX_URL 覆盖。robam 的本地 .env 通过 LABELVLA_DEPENDENCY_IMAGE 复用本机当前 labelvla-unified:local 镜像中已有的依赖；pip 仍会按 requirements.lock 校验版本，缺失或变更的依赖使用阿里云源。构建会清除缓存镜像内的旧前后端代码，再复制当前项目源码与构建结果。其他机器未配置该变量时默认从 python:3.11-slim 干净构建。

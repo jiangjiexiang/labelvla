@@ -1,0 +1,20 @@
+name: labelvla
+services:
+  app:
+    image: labelvla-unified:local
+    build:
+      context: .
+      target: runtime
+      args:
+        PYTHON_DEPENDENCY_IMAGE: "${LABELVLA_DEPENDENCY_IMAGE:-python:3.11-slim}"
+    container_name: labelvla-studio-integrated
+    restart: unless-stopped
+    user: "${LABELVLA_UID:-1000}:${LABELVLA_GID:-1000}"
+    ports:
+      - "${LABELVLA_PORT:-8002}:8000"
+    environment:
+      SAM_BASE: "${SAM_BASE:-http://8.147.114.158:8310}"
+    volumes:
+      - ./data:/data:ro
+      - ./data/.platform:/data/.platform
+      - ./output:/output

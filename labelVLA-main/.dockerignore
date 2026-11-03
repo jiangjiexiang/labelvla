@@ -1,9 +1,0 @@
-.git
-.github
-.claude
-tests
-examples
-assets
-tools
-uv.lock
-*.png

@@ -1,11 +1,12 @@
 # 数据集与运行数据
 /data/
+/output/
 /integration/**/data/
 
 # Node / 前端构建产物
 node_modules/
 dist/
-/integration-v2/studio/assets/
+/frontend/dist/
 
 # Python
 __pycache__/

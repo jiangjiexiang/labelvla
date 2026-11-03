@@ -4,6 +4,41 @@
 .g-heading-actions{min-width:0;max-width:100%}
 .g-heading-actions select{min-width:0;max-width:100%}
 .g-task-table td:nth-child(3){overflow:hidden;text-overflow:ellipsis}
+.g-task-table th:nth-child(1){width:6%}
+.g-task-table th:nth-child(2){width:18%}
+.g-task-table th:nth-child(3){width:14%}
+.g-task-table th:nth-child(4){width:9%}
+.g-task-table th:nth-child(5){width:10%}
+.g-task-table th:nth-child(6){width:8%}
+.g-task-table th:nth-child(7){width:8%}
+.g-task-table th:nth-child(8){width:7%}
+.g-task-table th:nth-child(9){width:9%}
+.g-task-table th:nth-child(10){width:11%}
+
+@media(max-width:1280px){
+  .g-task-table-wrap{overflow:visible}
+  .g-task-table,.g-task-table tbody{display:block;min-width:0}
+  .g-task-table thead{display:none}
+  .g-task-table tbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:16px}
+  .g-task-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;padding:16px;border:1px solid var(--g-border);border-radius:8px;background:#fff}
+  .g-task-table td{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;height:auto;padding:0;border:0;overflow:visible;white-space:normal;text-overflow:clip}
+  .g-task-table td::before{color:var(--g-muted);font-size:10px;content:attr(data-label)}
+  .g-task-table td:nth-child(2),.g-task-table td:nth-child(3){grid-column:1/-1;overflow-wrap:anywhere}
+  .g-task-table td:last-child{grid-column:1/-1;flex-direction:row;align-items:center}
+  .g-task-table td>small{margin-top:0}
+  .g-task-name{overflow:visible;white-space:normal;text-overflow:clip;overflow-wrap:anywhere}
+  .g-task-table .g-progress{width:100%;min-width:0}
+  .g-task-table .g-row-actions{flex-wrap:wrap;margin-left:auto}
+}
+@media(max-width:900px){
+  .g-task-table tbody{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .g-task-table tbody{padding:12px}
+  .g-task-table tr{grid-template-columns:1fr;padding:14px}
+  .g-task-table td:last-child{flex-direction:column;align-items:flex-start}
+  .g-task-table .g-row-actions{margin-left:0}
+}
 .g-video-info>div{flex-wrap:wrap}
 .g-video-info>div>strong{min-width:0;overflow-wrap:anywhere}
 .g-video-info>span{display:block;overflow-wrap:anywhere}
@@ -69,4 +104,35 @@
   .g-version-hero>svg{display:none}
   .g-version-hero dl{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
   .g-version-hero .g-button{width:100%}
+}
+
+.g-versions-card{margin-top:20px}
+.g-versions-card .g-card-title{padding:22px 22px 0}
+.g-version-table{table-layout:fixed}
+.g-version-table th:nth-child(1){width:8%}
+.g-version-table th:nth-child(2){width:20%}
+.g-version-table th:nth-child(3){width:28%}
+.g-version-table th:nth-child(4){width:9%}
+.g-version-table th:nth-child(5){width:12%}
+.g-version-table th:nth-child(6){width:11%}
+.g-version-table th:nth-child(7){width:12%}
+.g-version-table td{height:auto;min-height:54px;white-space:normal;overflow-wrap:anywhere;vertical-align:top}
+@media(max-width:1280px){
+  .g-version-table-wrap{overflow:visible}
+  .g-version-table,.g-version-table tbody{display:block}
+  .g-table-wrap table.g-version-table{min-width:0}
+  .g-version-table thead{display:none}
+  .g-version-table tbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:16px}
+  .g-version-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;padding:16px;border:1px solid var(--g-border);border-radius:8px;background:#fff}
+  .g-version-table td{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;min-height:0;padding:0;border:0;overflow:visible;white-space:normal;text-overflow:clip}
+  .g-version-table td::before{color:var(--g-muted);font-size:10px;content:attr(data-label)}
+  .g-version-table td:nth-child(2),.g-version-table td:nth-child(3){grid-column:1/-1}
+}
+@media(max-width:900px){
+  .g-version-table tbody{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .g-versions-card .g-card-title{padding:15px 15px 0}
+  .g-version-table tbody{padding:12px}
+  .g-version-table tr{grid-template-columns:1fr;padding:14px}
 }

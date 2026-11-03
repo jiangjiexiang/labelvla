@@ -224,7 +224,7 @@ export function TasksPage() {
           </select>
           <button className="g-button" onClick={() => { setQ(''); setStatus(''); setTab('all'); }}>重置</button>
         </div>
-        <div className="g-table-wrap">
+        <div className="g-table-wrap g-task-table-wrap">
           <table className="g-task-table">
             <thead>
               <tr>
@@ -235,19 +235,19 @@ export function TasksPage() {
             <tbody>
               {visible.map((task) => (
                 <tr key={task.id}>
-                  <td className="g-mono">{task.id}</td>
-                  <td>
+                  <td className="g-mono" data-label="任务 ID">{task.id}</td>
+                  <td data-label="任务名称">
                     <button className="g-link g-task-name" onClick={() => open(task.id)}>{task.name}</button>
                     <small>{task.task_type_label}</small>
                   </td>
-                  <td>{task.dataset_name}</td>
-                  <td><span className={`g-status ${statusTone(task.status)}`}>● {TASK_STATUS_LABEL[task.status]}</span></td>
-                  <td><Progress value={task.progress} /></td>
-                  <td>{task.assignee_name || task.assignee || '未分配'}</td>
-                  <td>{task.reviewer_name || task.reviewer || '未分配'}</td>
-                  <td>{task.created_by || '-'}</td>
-                  <td>{task.nodes.find((n) => n.key === task.current_node)?.name ?? '-'}</td>
-                  <td>
+                  <td data-label="关联数据集">{task.dataset_name}</td>
+                  <td data-label="状态"><span className={`g-status ${statusTone(task.status)}`}>● {TASK_STATUS_LABEL[task.status]}</span></td>
+                  <td data-label="处理进度"><Progress value={task.progress} /></td>
+                  <td data-label="标注负责人">{task.assignee_name || task.assignee || '未分配'}</td>
+                  <td data-label="审核负责人">{task.reviewer_name || task.reviewer || '未分配'}</td>
+                  <td data-label="创建人">{task.created_by || '-'}</td>
+                  <td data-label="当前节点">{task.nodes.find((n) => n.key === task.current_node)?.name ?? '-'}</td>
+                  <td data-label="操作">
                     <div className="g-row-actions">
                       <button className="g-link" onClick={() => open(task.id)}>查看</button>
                       {(task.status === 'running' || task.status === 'waiting_human') && <EnterAnnotation dataset={task.dataset} />}
@@ -832,23 +832,23 @@ export function VersionsPage() {
         <Empty>还没有版本。跑一个带「应用编译」节点的任务即可生成。</Empty>
       )}
 
-      <section className="g-card g-table-card">
+      <section className="g-card g-table-card g-versions-card">
         <div className="g-card-title"><div><h2>版本记录</h2><p>所有数据集的发布记录</p></div></div>
-        <div className="g-table-wrap">
-          <table>
+        <div className="g-table-wrap g-version-table-wrap">
+          <table className="g-version-table">
             <thead>
               <tr><th>版本</th><th>数据集</th><th>变更说明</th><th>Episodes</th><th>大小</th><th>状态</th><th>摘要</th></tr>
             </thead>
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <td><strong className="g-version-number">{row.version}</strong></td>
-                  <td>{row.dataset_name}</td>
-                  <td>{row.note || '-'}</td>
-                  <td>{row.episodes}</td>
-                  <td>{row.size_gb ?? 0} GB</td>
-                  <td><span className="g-status success">● {row.status}</span></td>
-                  <td className="g-mono">{(row.manifest || '').slice(0, 12) || '-'}</td>
+                  <td data-label="版本"><strong className="g-version-number">{row.version}</strong></td>
+                  <td data-label="数据集">{row.dataset_name}</td>
+                  <td data-label="变更说明">{row.note || '-'}</td>
+                  <td data-label="Episodes">{row.episodes}</td>
+                  <td data-label="大小">{row.size_gb ?? 0} GB</td>
+                  <td data-label="状态"><span className="g-status success">● {row.status}</span></td>
+                  <td className="g-mono" data-label="摘要">{(row.manifest || '').slice(0, 12) || '-'}</td>
                 </tr>
               ))}
             </tbody>

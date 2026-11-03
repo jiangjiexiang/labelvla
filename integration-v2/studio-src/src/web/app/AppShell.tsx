@@ -6,23 +6,16 @@ import {
   Toaster,
   useToast,
   useKeyboardShortcuts,
-  WelcomeScreen,
   useLoading,
   useOpenHistory,
-  OpenRemoteArchiveDialog,
-  SampleDatasetDialog,
   ExportDialog,
   DatasetHealthDialog,
   ViewerLayout,
   useLeRobotData,
   useLeRobotUi,
 } from '@';
-import { resolveDroppedItem, type SampleDataset } from '@/platform';
+import { resolveDroppedItem } from '@/platform';
 import { SourceController } from '../services/SourceController';
-import {
-  setUrlParamInLocation,
-  type ParsedSourceUrl,
-} from '../utils/sourceUrl';
 import { getDatasetDisplayName } from '@/core';
 import { useUrlDrivenSourceController } from '../hooks/useUrlDrivenSourceController';
 import { Upload } from 'lucide-react';
@@ -103,11 +96,8 @@ export function AppShell() {
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [playbackBarVisible, setPlaybackBarVisible] = useState(true);
   const [datasetLabel, setDatasetLabel] = useState<string | undefined>(undefined);
-  const [welcomeRequest, setWelcomeRequest] = useState<ParsedSourceUrl | null>(null);
 
   // Dialog states
-  const [remoteDialogOpen, setRemoteDialogOpen] = useState(false);
-  const [sampleDialogOpen, setSampleDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -194,7 +184,7 @@ export function AppShell() {
       addHistoryItem,
       clearHistoryHandleFlag,
       setDatasetLabel,
-      setWelcomeRequest,
+      setWelcomeRequest: () => {},
       t,
       showToast,
     });
@@ -290,11 +280,6 @@ export function AppShell() {
     };
   }, [controller, showToast, t]);
 
-  const handleOpenRemoteArchive = (providedUrl?: string) => {
-    if (providedUrl) controller.openRemoteArchive(providedUrl);
-    else setRemoteDialogOpen(true);
-  };
-
   // Expose for testing
   useEffect(() => {
     window.__INITIALIZE_WITH_DATASOURCE__ = initialize;
@@ -316,10 +301,6 @@ export function AppShell() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
       <Navbar
-        onOpenDirectory={() => { if (clearBridge()) controller.openDirectory(); }}
-        onOpenLocalArchive={() => { if (clearBridge()) controller.openLocalArchive(); }}
-        onOpenRemoteArchive={(url) => { if (clearBridge()) handleOpenRemoteArchive(url); }}
-        onOpenSample={() => { if (clearBridge()) setSampleDialogOpen(true); }}
         onOpenUrl={(raw) => { if (clearBridge()) controller.openFromUrl(raw, 'push'); }}
         onRestoreHistory={(item) => { if (clearBridge()) controller.restoreFromHistory(item); }}
         onGoHome={() => setPlatformPage('datasets')}
@@ -344,16 +325,11 @@ export function AppShell() {
         showToaster={false}
         sidebar={<SidebarTabs />}
         emptyState={
-          <WelcomeScreen
-            onOpenDirectory={() => { if (clearBridge()) controller.openDirectory(); }}
-            onOpenLocalArchive={() => { if (clearBridge()) controller.openLocalArchive(); }}
-            onOpenRemoteArchive={(url) => { if (clearBridge()) handleOpenRemoteArchive(url); }}
-            onOpenSample={() => { if (clearBridge()) setSampleDialogOpen(true); }}
-            onSelectSample={(sample) => controller.openSample(sample)}
-            requested={welcomeRequest}
-            onRequestUrl={(raw, mode) => setUrlParamInLocation(raw, mode)}
-            onRestoreFromUrl={(parsed) => controller.restoreFromUrl(parsed)}
-          />
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+            <p className="m-0 text-sm text-muted-foreground">
+              请先在「数据管理」中打开一个数据集，再点击「进入标注」。
+            </p>
+          </div>
         }
       />
 
@@ -361,18 +337,6 @@ export function AppShell() {
       </div>
 
       {/* Dialogs */}
-      <OpenRemoteArchiveDialog
-        open={remoteDialogOpen}
-        onOpenChange={setRemoteDialogOpen}
-        onSubmit={(url) => controller.openRemoteArchive(url)}
-      />
-
-      <SampleDatasetDialog
-        open={sampleDialogOpen}
-        onOpenChange={setSampleDialogOpen}
-        onSelect={(sample: SampleDataset) => controller.openSample(sample)}
-      />
-
       <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} />
 
       <DatasetHealthDialog

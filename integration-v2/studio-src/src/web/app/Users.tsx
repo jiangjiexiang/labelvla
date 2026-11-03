@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input } from '@/ui';
 import { api, ROLE_LABEL, type LoginRecord, type Role, type User } from './platform/api';
 import { useAuth } from './platform/authStore';
+import { fmtDateTime, fmtTime, isExpired } from './platform/time';
 
 const ROLE_LEVEL: Record<string, number> = { admin: 100, reviewer: 50, annotator: 10 };
 
@@ -62,7 +63,7 @@ export function Users() {
 
   const statusOf = (u: User) => {
     if (u.disabled) return <Badge variant="secondary" className="text-zinc-500">已禁用</Badge>;
-    if (u.expires_at && new Date(u.expires_at).getTime() < Date.now())
+    if (isExpired(u.expires_at))
       return <Badge variant="secondary" className="text-red-600">已过期</Badge>;
     return <Badge variant="secondary" className="text-emerald-600">正常</Badge>;
   };
@@ -104,11 +105,11 @@ export function Users() {
                 <td className="px-3 py-2">
                   {u.last_login ? (
                     <button className="text-primary underline-offset-2 hover:underline" onClick={() => void showLogins(u)}>
-                      {new Date(u.last_login).toLocaleString('zh-CN')}
+                      {fmtDateTime(u.last_login)}
                     </button>
                   ) : <span className="text-muted-foreground">从未登录</span>}
                 </td>
-                <td className="px-3 py-2 text-muted-foreground">{u.expires_at ?? '永久有效'}</td>
+                <td className="px-3 py-2 text-muted-foreground">{u.expires_at ? fmtTime(u.expires_at) : '永久有效'}</td>
                 <td className="px-3 py-2 text-right">
                   {(canManage(u) || (!!me && me.role === 'admin' && me.id !== u.id && u.disabled)) ? (
                     <div className="flex justify-end gap-1">
@@ -164,7 +165,7 @@ export function Users() {
               <tbody>
                 {(logins?.items ?? []).map((l, i) => (
                   <tr key={i} className="border-t border-border">
-                    <td className="py-1.5">{new Date(l.login_at).toLocaleString('zh-CN')}</td>
+                    <td className="py-1.5">{fmtDateTime(l.login_at)}</td>
                     <td className="py-1.5">{l.ip ?? '-'}</td>
                     <td className="max-w-[160px] truncate py-1.5" title={l.device}>{l.device ?? '-'}</td>
                   </tr>

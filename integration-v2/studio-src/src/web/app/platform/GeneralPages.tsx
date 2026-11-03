@@ -6,7 +6,11 @@ import {
   api, NODE_STATUS_LABEL, STATUS_LABEL, TASK_STATUS_LABEL, TASK_TYPE_OPTIONS,
   type User, type EpisodeRow, type Task, type TaskDetail, type TaskStats, type VersionRow, type VideoRow,
 } from './api';
+import { WorkflowBuilder, TaskWorkflowDialog } from './WorkflowEditor';
+import { ProgramReport } from './ProgramReport';
+import type { WorkflowCatalog, WorkflowNode } from './api';
 import { usePage, useSelection } from './usePage';
+import { isExpired } from './time';
 import { useAuth } from './authStore';
 import { useLeRobotData, useLeRobotSelection } from '../../../react/contexts/LeRobotContext';
 import { useAnnotation } from '../../annotation/AnnotationContext';
@@ -64,7 +68,7 @@ function Heading({ eyebrow, title, description, children }: {
 function EnterAnnotation({ children = '进入标注', dataset, episode, taskId }: { children?: React.ReactNode; dataset: string; episode?: number; taskId?: number }) {
   const [, setPage] = usePage();
   const [, setSelection] = useSelection();
-  const { initialize } = useLeRobotData();
+  const { initialize, dataLoader } = useLeRobotData();
   const { selectEpisode } = useLeRobotSelection();
   const annotation = useAnnotation();
   const [busy, setBusy] = useState(false);
@@ -80,8 +84,12 @@ function EnterAnnotation({ children = '进入标注', dataset, episode, taskId }
         if (!response.ok) throw new Error(result.detail || '创建任务副本失败');
         openedDataset = result.dataset;
       }
-      await connectServerDataset(openedDataset, initialize, annotation?.setDataset);
-      await selectEpisode(episode ?? 0);
+      if (!dataLoader || annotation?.dataset !== openedDataset) {
+        await connectServerDataset(openedDataset, initialize, annotation?.setDataset);
+        await selectEpisode(episode ?? 0);
+      } else if (episode !== undefined) {
+        await selectEpisode(episode);
+      }
       setSelection({ dataset: openedDataset, episode: episode ?? 0, taskId });
       setPage(null);
     } catch (e) { setError(errText(e)); }
@@ -317,11 +325,15 @@ export function TaskCreatePage() {
   const [name, setName] = useState('');
   const [dataset, setDataset] = useState('');
   const [taskType, setTaskType] = useState('video_annotation');
+  const [catalog,setCatalog]=useState<WorkflowCatalog | null>(null);
+  const [workflow,setWorkflow]=useState<WorkflowNode[]>([]);
+  useEffect(() => { api.workflowCatalog().then(setCatalog).catch((e) => setError(`流程配置加载失败：${errText(e)}`)); },[]);
+  useEffect(() => { if (catalog) setWorkflow(catalog.templates[taskType].map((node) => ({...node}))); },[catalog,taskType]);
   const [assignee, setAssignee] = useState('');
   const [reviewer, setReviewer] = useState('');
   const [people, setPeople] = useState<User[]>([]);
   useEffect(() => {
-    api.users().then((users) => setPeople(users.filter((u) => !u.disabled && (!u.expires_at || new Date(u.expires_at).getTime() > Date.now()))))
+    api.users().then((users) => setPeople(users.filter((u) => !u.disabled && !isExpired(u.expires_at))))
       .catch((e) => setError(`负责人列表加载失败：${errText(e)}`));
   }, []);
   const [createMode, setCreateMode] = useState('new');
@@ -344,11 +356,12 @@ export function TaskCreatePage() {
   }, [datasets, dataset]);
 
   const selected = TASK_TYPE_OPTIONS.find((t) => t.value === taskType) ?? TASK_TYPE_OPTIONS[0];
-  const nodes = selected.desc.split(' → ');
+  const flowDescription=workflow.map((node) => node.name).join(' → ');
 
   const submit = async () => {
     if (!dataset) { setError('请先选择数据集'); return; }
-    if (taskType === 'video_annotation' && !assignee) { setError('请选择标注负责人'); return; }
+    if (workflow.some((node) => node.key==='annotate') && !assignee) { setError('请选择标注负责人'); return; }
+    if (!catalog || !workflow.length) { setError('请配置任务流程'); return; }
     if (!reviewer) { setError('请选择审核负责人'); return; }
     setSubmitting(true);
     setError('');
@@ -357,6 +370,7 @@ export function TaskCreatePage() {
         name: name.trim() || `${datasets.find((d) => d.path === dataset)?.name ?? '数据集'} · 数据生产`,
         dataset,
         task_type: taskType,
+        workflow,
         assignee,
         reviewer,
         create_mode: createMode,
@@ -410,7 +424,7 @@ export function TaskCreatePage() {
               <small>从所选数据复制任务副本，修改和发布都保留旧版本。</small>
             </label>
             <label className="full">分配给
-              <select value={assignee} required={taskType === 'video_annotation'} onChange={(e) => setAssignee(e.target.value)}>
+              <select value={assignee} required={workflow.some((node) => node.key==='annotate')} onChange={(e) => setAssignee(e.target.value)}>
                 <option value="">请选择标注负责人</option>
                 {people.map((u) => <option key={u.id} value={u.username}>{u.display_name || u.username}（{u.username}）</option>)}
               </select>
@@ -433,24 +447,14 @@ export function TaskCreatePage() {
         </section>
 
         <section>
-          <div className="g-form-title"><span>2</span><div><h2>流程配置</h2><p>{selected.desc}</p></div></div>
-          <div className="g-workflow">
-            {nodes.map((item) => (
-              <label key={item}>
-                <input type="checkbox" checked readOnly />
-                <span>✓</span>
-                <div>
-                  <strong>{item}</strong>
-                  <small>{(item === '人工标注' || item === '质检') ? '需要负责人确认，任务在此暂停' : '自动执行'}</small>
-                </div>
-              </label>
-            ))}
-          </div>
+          <div className="g-form-title"><span>2</span><div><h2>流程配置</h2><p>{flowDescription || selected.desc}</p></div></div>
+          {catalog ? <WorkflowBuilder value={workflow} onChange={setWorkflow} catalog={catalog} /> : <p>正在加载可用程序…</p>}
+
         </section>
 
         <div className="g-form-actions">
           <button type="button" className="g-button" onClick={() => setPage('tasks')}>取消</button>
-          <button className="g-button g-primary" type="submit" disabled={submitting || !dataset}>
+          <button className="g-button g-primary" type="submit" disabled={submitting || !dataset || !catalog || !workflow.length}>
             {submitting ? '创建中…' : '创建任务'}
           </button>
         </div>
@@ -462,6 +466,9 @@ export function TaskCreatePage() {
 // ── 任务详情 ──────────────────────────────────────────────
 
 export function TaskDetailPage() {
+  const [editingWorkflow,setEditingWorkflow]=useState(false);
+  const studio = useLeRobotSelection();
+  const annotation = useAnnotation();
   const { user } = useAuth();
   const [, setPage] = usePage();
   const [selection] = useSelection();
@@ -483,6 +490,8 @@ export function TaskDetailPage() {
   useEffect(() => { void load(); }, [load]);
 
   const active = task ? ['pending', 'running', 'waiting_human'].includes(task.status) : false;
+  const unsaved = !!task && !!annotation?.dataset && [task.workspace_path, task.edited_dataset].includes(annotation.dataset) &&
+    (annotation.dirty || studio.trimRanges.size > 0 || studio.modifiedEpisodes.size > 0 || studio.deletedEpisodes.size > 0);
 
   useEffect(() => {
     if (!active) return;
@@ -532,6 +541,8 @@ export function TaskDetailPage() {
         <button className="g-button" onClick={() => setPage('tasks')}><ArrowLeft />返回</button>
         <button className="g-button" onClick={() => void load()}><RefreshCw />刷新</button>
         <ShareTask id={task.id} />
+        {(user?.role==='admin' || user?.role==='reviewer') && ['waiting_human','failed'].includes(task.status) && <button className="g-button" disabled={busy} onClick={() => setEditingWorkflow(true)}>编辑流程</button>}
+        {task.status==='failed' && task.nodes.some((node) => node.key==='annotate') && (user?.role==='admin' || user?.role==='reviewer' || user?.username===task.assignee) && <button className="g-button" disabled={busy} onClick={() => void act(() => api.reworkTask(task.id))}>返回标注修正</button>}
         {active && (
           <button className="g-button" disabled={busy} onClick={() => void act(() => api.cancelTask(task.id))}>取消任务</button>
         )}
@@ -544,6 +555,7 @@ export function TaskDetailPage() {
 
       {error && <Notice kind="error">{error}</Notice>}
       {task.error && <Notice kind="error">执行失败:{task.error}</Notice>}
+      {editingWorkflow && <TaskWorkflowDialog task={task} onClose={() => setEditingWorkflow(false)} onSaved={setTask} />}
       {task.status === 'waiting_human' && (
         <Notice kind="info">任务在「{task.current_node === 'qc' ? '标注质检' : '人工标注'}」节点暂停，由指定负责人检查并确认后，才会继续后续节点。</Notice>
       )}
@@ -603,16 +615,18 @@ export function TaskDetailPage() {
               <span className={`g-status ${statusTone(node.status)}`}>● {NODE_STATUS_LABEL[node.status]}</span>
               <span>{fmtTime(node.started_at)}</span>
               <span>{node.finished_at ? fmtDuration(node.started_at, node.finished_at) : '-'}</span>
-              {node.status === 'blocked' && (
+              {node.status === 'blocked' && node.key === 'annotate' && (
                 <button
                   className="g-button g-primary"
-                  disabled={busy}
+                  disabled={busy || unsaved}
+                  title={unsaved ? '请先在工作区保存修改' : undefined}
                   onClick={(e) => { e.preventDefault(); void act(() => api.completeNode(task.id, node.key)); }}
                 >
                   完成人工标注
                 </button>
               )}
             </summary>
+            {node.key === 'annotate' && node.status === 'blocked' && unsaved && <Notice kind="info">工作区还有未保存的修改，请进入工作区点击「保存修改」后再提交审核。</Notice>}
             {node.key === 'qc' && node.status === 'blocked' && <div className="flex flex-wrap gap-2 p-3">
               <EnterAnnotation taskId={task.id} dataset={task.dataset}>查看视频质检</EnterAnnotation>
               {(user?.role === 'admin' || (user?.role === 'reviewer' && user.username === task.reviewer)) && <>
@@ -620,6 +634,8 @@ export function TaskDetailPage() {
                 <button className="g-button" disabled={busy} onClick={() => { const reason = window.prompt('质检打回原因（必填）'); if (reason?.trim()) void act(() => api.completeNode(task.id, 'qc', 'rejected', reason.trim())); }}>打回重标</button>
               </>}
             </div>}
+            <ProgramReport node={node} />
+            {node.program && <p className="g-node-program">执行程序：{node.program_name || node.program}</p>}
             <div className="g-node-detail">
               <div>
                 <h3>执行进度</h3>
@@ -875,21 +891,13 @@ export function VersionsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const latest = rows[0];
-
   return (
-    <div className="g-page">
-      <div className="flex justify-end">
+    <div className="g-page g-version-page">
+      <div className="g-version-toolbar">
         <button className="g-button" onClick={() => void load()}><RefreshCw />刷新</button>
       </div>
 
       {error && <Notice kind="error">{error}</Notice>}
-
-      {latest ? (
-        <section className="g-card p-4"><h2 className="m-0 text-base font-semibold">{latest.dataset_name}</h2></section>
-      ) : (
-        <Empty>还没有版本。跑一个带「应用编译」节点的任务即可生成。</Empty>
-      )}
 
       <section className="g-card g-table-card g-versions-card">
         <div className="g-card-title"><div><h2>版本记录</h2><p>所有数据集的发布记录</p></div></div>
@@ -905,11 +913,18 @@ export function VersionsPage() {
                   <td data-label="数据集">{row.dataset_name}</td>
                   <td data-label="变更说明">{row.note || '-'}</td>
                   <td data-label="Episodes">{row.episodes}</td>
-                  <td data-label="大小">{row.size_gb ?? 0} GB</td>
+                  <td data-label="大小">{row.size_gb == null ? '-' : row.size_gb >= 1 ? `${row.size_gb.toFixed(2)} GB` : `${(row.size_gb * 1024).toFixed(2)} MB`}</td>
                   <td data-label="状态"><span className="g-status success">● {row.status}</span></td>
                   <td className="g-mono" data-label="摘要">{(row.manifest || '').slice(0, 12) || '-'}</td>
-                  <td data-label="数据文件">{row.download_url ? <a className="g-link" href={row.download_url}>下载完整数据包</a> : '-'}
-                    {row.dataset_path && <small className="block max-w-xs break-all" title={row.dataset_path}>{row.dataset_path}</small>}</td>
+                  <td data-label="数据文件">
+                    <div className="g-version-files">
+                      {row.download_url ? <a className="g-link" href={row.download_url}>下载完整数据包</a> : <span className="g-version-unavailable">暂无完整数据包</span>}
+                      {row.dataset_path && <details className="g-version-location">
+                        <summary>存储位置</summary>
+                        <code>{row.dataset_path}</code>
+                      </details>}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

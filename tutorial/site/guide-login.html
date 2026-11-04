@@ -20,23 +20,19 @@
     <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>1. 登录与数据管理</span></p>
     
 <h1>1. 登录与数据管理</h1>
-<p class="lead">管理员账号 <code>admin</code>，密码 <code>admin123</code>。如果是新部署、还没改过密码，初始密码是 <code>admin</code>，首次登录会要求改密；改过之后以实际密码为准。登录后默认进入「数据管理」。</p>
+<p class="lead">管理员账号 <code>admin</code>，密码 <code>admin123</code>（新部署未改过密码时为 <code>admin</code>，首次登录会要求改密）。</p>
 
 <h2 id="login">登录</h2>
-<ol class="steps"><li><b>打开平台</b>浏览器访问 <code>http://服务器地址:8002/</code>，输入账号和密码。</li><li><b>首次登录改密</b>第一次登录会跳到修改密码界面，新密码至少 6 位。</li><li><b>进入数据管理</b>登录后默认落在「数据管理」。左侧菜单依次是数据看板、数据管理、任务管理、视频库、版本管理、质检管理、用户管理。</li></ol>
+<figure class="step"><figcaption class="step-title"><b>第 1 步　输入账号和密码</b><span>① 用户名　② 密码　③ 点「登录」；首次登录会先让你设置新密码。</span></figcaption><img data-rel="images/steps/login-1.jpg" src="../images/steps/login-1.jpg" alt="第 1 步　输入账号和密码" loading="lazy"></figure>
 
 <h2 id="datasets">查看数据集</h2>
-<p>数据管理页列出全部数据集：条数、时长、容量、相机数和标注进度。名称后面的标签是机器人来源，用来区分不同本体采集的数据。</p>
-<figure><img data-rel="images/03-datasets.jpg" src="../images/03-datasets.jpg" alt="数据管理"><figcaption>图 1　数据管理：名称后面的标签是机器人来源，右侧是标注进度</figcaption></figure>
-
-<h2 id="status">确认数据状态</h2>
-<p>点数据集名称进入 Episode 列表。每条数据显示时长、任务描述和当前标注状态，用来判断这条数据是还没人碰、正在标、待审核还是已通过。</p>
-<figure><img data-rel="images/04-episodes.jpg" src="../images/04-episodes.jpg" alt="Episode 列表"><figcaption>图 2　Episode 列表：每条数据显示时长、任务描述和当前标注状态</figcaption></figure>
-<p>「数据看板」用来看整体进度：标注状态分布、质检通过率、最近 30 天的增长趋势。需要向团队汇报进度时先看这里。</p>
+<p>登录后默认进入「数据管理」，这里列出全部数据集。</p>
+<figure class="step"><figcaption class="step-title"><b>第 2 步　找到要标注的数据集</b><span>① 在列表里找到数据集，名称后面的标签是机器人来源　② 点名称进入 Episode 列表。</span></figcaption><img data-rel="images/steps/datasets-1.jpg" src="../images/steps/datasets-1.jpg" alt="第 2 步　找到要标注的数据集" loading="lazy"></figure>
+<p>点进去之后每条 Episode 显示时长、任务描述和标注状态（未标注 / 标注中 / 待审核 / 已通过 / 已打回）。数据看板可以看全局的标注进度和质检通过率。</p>
 
     <nav class="pager"><a href="demo.html"><span class="k">上一页</span>流程演示</a><a class="next" href="guide-task.html"><span class="k">下一页</span>2. 新建标注任务</a></nav>
   </main>
-  <aside class="toc-right"><p class="t">本页</p><a href="#login">登录</a><a href="#datasets">数据管理</a><a href="#status">标注状态</a></aside>
+  <aside class="toc-right"><p class="t">本页</p><a href="#login">登录</a><a href="#datasets">查看数据集</a></aside>
 </div>
 <footer>LabelVLA 文档</footer>
 <script>

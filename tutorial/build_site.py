@@ -157,9 +157,10 @@ TEMPLATE = '''<!doctype html>
 '''
 
 import shutil
-(SITE / 'images').mkdir(exist_ok=True)
-for f in (ROOT / 'images').glob('*.jpg'):
-    shutil.copy2(f, SITE / 'images' / f.name)
+for src_dir, dst_dir in ((ROOT / 'images', SITE / 'images'), (ROOT / 'images' / 'steps', SITE / 'images' / 'steps')):
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    for f in src_dir.glob('*.jpg'):
+        shutil.copy2(f, dst_dir / f.name)
 
 for name, page in PAGES.items():
     html = TEMPLATE.format(title=page['title'], updated=UPDATED, sidebar=sidebar(name),

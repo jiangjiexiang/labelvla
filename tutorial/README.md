@@ -12,6 +12,9 @@
 
 ## 页面
 
+操作指南每章是「一步一图」：每屏截图上方标「第 N 步」和一句说明，截图上用编号圆圈、框和箭头指出要点。
+截图由 `tools/capture_steps*.mjs` 截取并标注，输出到 `images/steps/`。
+
 导航分三组：开始（概览、流程演示）· 操作指南（第 1–6 章）· 参考（常见问题、快捷键、角色与权限）。
 
 | 页 | 内容 |
@@ -37,6 +40,7 @@ tutorial/
 │   └── *.html            # 由 pages.py 生成，不要手改
 ├── build_site.py         # 生成 site/*.html（同时把 images/ 复制到 site/images/）
 ├── images/               # 截图（1600×960 JPEG）与录屏封面
+│   └── steps/            # 一步一图的带标注截图
 ├── videos/tutorial.mp4   # 录屏成品（1280×768，约 33 秒）
 └── tools/                # 截图与录制脚本
 ```
@@ -76,6 +80,10 @@ python3 tutorial/tools/mk_task.py            # 新建演示任务，记下任务
 cd tutorial/tools && npm install
 TASK_ID=<任务ID> node shots.mjs
 TASK_ID=<任务ID> node sam_stills.mjs
+# 一步一图的带标注截图（输出到 images/steps/，需按章节顺序分 4 段执行）
+TASK_ID=<任务ID> node capture_steps.mjs && TASK_ID=<任务ID> node capture_steps2.mjs
+# …… 任务流转到人工验收后再执行：
+TASK_ID=<任务ID> node capture_steps3.mjs && node capture_steps4.mjs
 
 # 录屏：三段依次录，每段录完把 .work/frames 压成 mp4
 TASK_ID=<任务ID> node rec_doc_1.mjs   # 登录 → 建任务 → 进工作区

@@ -20,21 +20,17 @@
     <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>4. SAM 辅助分割</span></p>
     
 <h1>4. SAM 辅助分割</h1>
-<p class="lead">SAM 点一下目标就能分割出轮廓，并沿整段视频逐帧跟踪，省去手工画每一帧。它由独立部署的推理服务提供；没有配置时按钮会出现，但点击后无法建立会话。</p>
+<p class="lead">点一下目标就能分割出轮廓，并沿整段视频逐帧跟踪，省去手工画每一帧。需要独立部署的推理服务。</p>
 
 <h2 id="steps">操作步骤</h2>
-<ol class="steps"><li><b>选中片段</b>例如「抓取食物」。没有选中片段时，SAM 面板不会出现。</li><li><b>点「SAM 点选分割」</b>首次使用会上传当前 Episode 视频建立会话，面板显示「SAM 就绪」后即可点选。</li><li><b>在目标上点一下</b>画面出现蓝色轮廓和绿色圆点，表示可以继续加点修正；按住 <kbd>Shift</kbd> 点背景可以作为负点修正。</li><li><b>点「传播跟踪」</b>按钮上实时显示进度（例如 240/600 帧），结束后提示「已生成目标框：N 帧轨迹」。</li><li><b>保存</b>按 <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>S</kbd> 或点右上角「保存」，轮廓在后台落盘，刷新后仍可查看。</li></ol>
-<figure><img data-rel="images/18-sam-ready.jpg" src="../images/18-sam-ready.jpg" alt="SAM 就绪"><figcaption>图 7　「SAM 点选分割」就绪：面板显示当前相机，可以开始在画面上点选</figcaption></figure>
-<figure><img data-rel="images/19-sam-point.jpg" src="../images/19-sam-point.jpg" alt="SAM 点选结果"><figcaption>图 8　点选结果：蓝色区域是分割轮廓，右侧给出对象编号和框尺寸</figcaption></figure>
+<figure class="step"><figcaption class="step-title"><b>第 1 步　选中片段后打开 SAM</b><span>先在轨道上选中一个片段，面板底部才会出现「SAM 点选分割」。</span></figcaption><img data-rel="images/steps/sam-1.jpg" src="../images/steps/sam-1.jpg" alt="第 1 步　选中片段后打开 SAM" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 2 步　选相机、点选目标</b><span>① 选择要分割的相机　② 等面板显示「SAM 就绪」后，在画面上点一下目标。</span></figcaption><img data-rel="images/steps/sam-2.jpg" src="../images/steps/sam-2.jpg" alt="第 2 步　选相机、点选目标" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 3 步　确认轮廓并传播</b><span>点中后出现蓝色轮廓和绿色圆点；确认无误后点「传播跟踪」，进度跑完会提示「已生成目标框：N 帧轨迹」。</span></figcaption><img data-rel="images/steps/sam-3.jpg" src="../images/steps/sam-3.jpg" alt="第 3 步　确认轮廓并传播" loading="lazy"></figure>
+<div class="note">最后按 <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>S</kbd> 或点右上角「保存」，轮廓会在后台落盘。</div>
 
 <h2 id="caveat">注意事项</h2>
-<div class="note warn"><b>返回的框特别大：</b>说明没点中目标（模型把桌面、墙面当成了目标）。点「放弃对象」换个位置再点，或换到视野更完整的相机重试。</div>
-<p>其他几点实测经验：</p>
-<ul>
-  <li>腕部相机视野窄、遮挡多，通常不如正面相机点得准。</li>
-  <li>点选的那一帧已经出结果，但其他帧要等「传播跟踪」跑完才有轮廓，中途报「资源加载失败」属于正常现象。</li>
-  <li>传播是整段视频一起算的，进度条跑完再切换帧查看。</li>
-</ul>
+<div class="note warn"><b>返回的框特别大：</b>说明没点中目标（把桌面、墙面当成了目标）。点「放弃对象」换个位置再点，或换到视野更完整的相机重试。</div>
+<p>腕部相机视野窄、遮挡多，通常不如正面相机点得准。点选那一帧已经出结果，其他帧要等传播跑完；中途提示「资源加载失败」是正常现象，关掉弹窗等进度走完即可。</p>
 
     <nav class="pager"><a href="guide-studio.html"><span class="k">上一页</span>3. 标注工作台</a><a class="next" href="guide-submit.html"><span class="k">下一页</span>5. 保存与提交</a></nav>
   </main>

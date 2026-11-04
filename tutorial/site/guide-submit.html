@@ -20,13 +20,12 @@
     <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>5. 保存与提交</span></p>
     
 <h1>5. 保存与提交</h1>
-<p class="lead">标注工作分两层保存：单条 Episode 的标注保存，和把整个工作区写回任务版本。</p>
+<p class="lead">标注分两层保存：右侧面板的「保存」只保存当前 Episode，顶部「保存修改」才把整个工作区写回任务版本。</p>
 
-<h2 id="save">保存</h2>
-<ol class="steps"><li><b>保存当前 Episode</b>右侧标注面板的「保存」，只保存当前这一条。</li><li><b>保存修改</b>顶部「保存修改」把工作区里所有改动（包括裁剪过的视频）写回任务版本，等到提示「已保存」。</li></ol>
-
-<h2 id="submit">提交审核</h2>
-<ol class="steps"><li><b>完成人工标注</b>在任务详情页「人工标注」节点点「完成人工标注」，任务流转到「人工验收」。</li><li><b>处理前置提示</b>如果提示「请先在 Studio 点击保存修改」，回到工作区点「保存修改」，等「已保存」后再提交。</li></ol>
+<h2 id="save">保存与提交</h2>
+<figure class="step"><figcaption class="step-title"><b>第 1 步　保存</b><span>右侧面板「保存」保存当前 Episode；顶部「保存修改」把全部改动写回版本，等提示「已保存」。</span></figcaption><img data-rel="images/steps/studio-1.jpg" src="../images/steps/studio-1.jpg" alt="第 1 步　保存" loading="lazy"></figure>
+<p>保存完成后回到任务详情页，在「人工标注」节点点「完成人工标注」（或在工作区逐条「通过」），任务流转到「人工验收」。</p>
+<div class="note">如果提示「请先在 Studio 点击保存修改」，说明还有改动没写回：回到工作区点顶部「保存修改」再提交。</div>
 
 <h2 id="files">文件位置</h2>
 <table>
@@ -38,7 +37,7 @@
 
     <nav class="pager"><a href="guide-sam.html"><span class="k">上一页</span>4. SAM 辅助分割</a><a class="next" href="guide-release.html"><span class="k">下一页</span>6. 审核与版本发布</a></nav>
   </main>
-  <aside class="toc-right"><p class="t">本页</p><a href="#save">保存</a><a href="#submit">提交</a><a href="#files">文件位置</a></aside>
+  <aside class="toc-right"><p class="t">本页</p><a href="#save">保存与提交</a><a href="#files">文件位置</a></aside>
 </div>
 <footer>LabelVLA 文档</footer>
 <script>

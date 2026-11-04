@@ -103,3 +103,10 @@ footer{max-width:1240px;margin:0 auto;padding:24px 24px 56px;border-top:1px soli
   h2,h3{break-after:avoid}
   figure{break-inside:avoid-page}
 }
+
+/* 一步一图 */
+figure.step{margin:22px 0 30px}
+figure.step figcaption.step-title{margin:0 0 8px;font-size:15px;color:var(--ink)}
+figure.step figcaption.step-title b{font-weight:650}
+figure.step figcaption.step-title span{display:block;margin-top:2px;font-size:14px;color:var(--muted)}
+figure.step img{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px;background:#fff}

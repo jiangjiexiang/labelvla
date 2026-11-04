@@ -20,27 +20,21 @@
     <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>6. 审核与版本发布</span></p>
     
 <h1>6. 审核与版本发布</h1>
-<p class="lead">审核人打开同一个任务，看到的是只读副本，标注面板顶部只有「通过 / 打回」。</p>
+<p class="lead">审核人打开同一个任务，看到的是只读副本；确认无误后点通过，系统自动完成程序质检和版本发布。</p>
 
-<h2 id="qc">视频质检</h2>
-<ol class="steps"><li><b>查看视频质检</b>审核人点「查看视频质检」进入工作区，播放视频检查片段边界、描述和目标框。</li><li><b>通过或打回</b>点「质检通过」确认视频；打回必须填写原因，任务退回标注节点。</li><li><b>确认后自动发布</b>视频质检通过后，系统自动执行程序质检和版本发布，任务状态变为「已完成」。</li></ol>
+<h2 id="review">审核</h2>
+<figure class="step"><figcaption class="step-title"><b>第 1 步　审核人查看视频</b><span>① 查看视频质检　② 质检通过　③ 打回重标（打回必须填原因）</span></figcaption><img data-rel="images/steps/review-1.jpg" src="../images/steps/review-1.jpg" alt="第 1 步　审核人查看视频" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>审核时工作台是只读的</b><span>面板顶部只有「通过 / 打回」，片段和目标框只能看不能改。</span></figcaption><img data-rel="images/steps/review-2.jpg" src="../images/steps/review-2.jpg" alt="审核时工作台是只读的" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 2 步　点「质检通过」</b><span>确认视频没问题后点「质检通过」，系统随后自动执行程序质检并发布新版本。</span></figcaption><img data-rel="images/steps/review-3.jpg" src="../images/steps/review-3.jpg" alt="第 2 步　点「质检通过」" loading="lazy"></figure>
 
-<h2 id="program">程序质检</h2>
-<p>程序质检逐条检查 Episode 是否都有标注。未标注的必须填写跳过原因，否则这个节点会失败，任务停在「程序质检」。</p>
-<div class="note">任务失败时用「转回节点」退回「人工标注」，补完再提交，不需要新建任务。</div>
-
-<h2 id="versions">版本记录</h2>
-<p>在「版本管理」里按发布顺序查看每个版本：Episodes 数、大小、状态、校验摘要，可下载完整数据包。旧版本不会被覆盖。</p>
-<table>
-  <tr><th>版本</th><th>含义</th></tr>
-  <tr><td>V1.0、V2.0 …</td><td>发布顺序，不代表采集顺序</td></tr>
-  <tr><td>标注中</td><td>任务已建但还没发布，数据包不完整</td></tr>
-  <tr><td>已发布</td><td>有完整数据包和校验摘要，可下载</td></tr>
-</table>
+<h2 id="result">发布结果</h2>
+<figure class="step"><figcaption class="step-title"><b>发布完成</b><span>① 任务状态变为「已完成」　② 五个节点全部通过。</span></figcaption><img data-rel="images/steps/release-1.jpg" src="../images/steps/release-1.jpg" alt="发布完成" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>在「版本管理」查看新版本</b><span>① ② 每次发布都是一个独立版本，有校验摘要和完整数据包，旧版本不会被覆盖。</span></figcaption><img data-rel="images/steps/versions-1.jpg" src="../images/steps/versions-1.jpg" alt="在「版本管理」查看新版本" loading="lazy"></figure>
+<div class="note">程序质检不通过时，任务停在「程序质检」；用「转回节点」退回「人工标注」，补完再提交，不用新建任务。</div>
 
     <nav class="pager"><a href="guide-submit.html"><span class="k">上一页</span>5. 保存与提交</a><a class="next" href="faq.html"><span class="k">下一页</span>常见问题</a></nav>
   </main>
-  <aside class="toc-right"><p class="t">本页</p><a href="#qc">视频质检</a><a href="#program">程序质检</a><a href="#versions">版本记录</a></aside>
+  <aside class="toc-right"><p class="t">本页</p><a href="#review">审核</a><a href="#result">发布结果</a></aside>
 </div>
 <footer>LabelVLA 文档</footer>
 <script>

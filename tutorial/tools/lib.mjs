@@ -399,3 +399,81 @@ export async function closeIfError(page) {
 export async function clearCanvas(page) {
   await page.evaluate(() => document.querySelectorAll('.fx-canvas').forEach((e) => e.remove()));
 }
+
+/**
+ * 一步一图的标注：在截图上画编号圆圈、高亮框和箭头。
+ * items: [{ sel | rect: [x,y,w,h], label: '1', color?: '#e11d48', arrow?: true }]
+ * 坐标系为页面像素；arrow 为 true 时从圆圈画一根箭头指向元素中心。
+ */
+export async function annotateSteps(page, items, { caption = '' } = {}) {
+  await page.evaluate(({ items, caption }) => {
+    document.querySelectorAll('.fx-steps').forEach((e) => e.remove());
+    const layer = document.createElement('div');
+    layer.className = 'fx-steps';
+    Object.assign(layer.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: 2147483000 });
+    document.body.appendChild(layer);
+    const box = (r, color) => {
+      const d = document.createElement('div');
+      Object.assign(d.style, {
+        position: 'absolute', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+        border: `2.5px solid ${color}`, borderRadius: '8px',
+        boxShadow: `0 0 0 4px ${color}22`,
+      });
+      return d;
+    };
+    const circle = (x, y, label, color) => {
+      const d = document.createElement('div');
+      Object.assign(d.style, {
+        position: 'absolute', left: (x - 15) + 'px', top: (y - 15) + 'px', width: '30px', height: '30px', borderRadius: '50%',
+        background: color, color: '#fff', font: '700 15px/30px -apple-system,"PingFang SC",sans-serif',
+        textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,.28)',
+      });
+      d.textContent = label;
+      return d;
+    };
+    for (const it of items) {
+      const color = it.color || '#e11d48';
+      let r;
+      if (it.sel) {
+        const el = document.querySelector(it.sel);
+        if (!el) continue;
+        el.scrollIntoView({ block: 'nearest' });
+        const b = el.getBoundingClientRect();
+        r = { left: b.left - 3, top: b.top - 3, width: b.width + 6, height: b.height + 6 };
+      } else {
+        const [x, y, w, h] = it.rect;
+        r = { left: x, top: y, width: w, height: h };
+      }
+      layer.appendChild(box(r, color));
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const px = it.pin ? it.pin[0] : r.left - 24, py = it.pin ? it.pin[1] : r.top - 4;
+      layer.appendChild(circle(px, py, it.label, color));
+      if (it.arrow !== false) {
+        const dx = cx - px, dy = cy - py, len = Math.hypot(dx, dy);
+        const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        const a = document.createElement('div');
+        Object.assign(a.style, {
+          position: 'absolute', left: px + 'px', top: py + 'px', width: Math.max(10, len - 22) + 'px', height: '2px',
+          background: color, transformOrigin: '0 50%', transform: `rotate(${ang}deg)`,
+        });
+        a.innerHTML = `<span style="position:absolute;right:-1px;top:-5px;width:0;height:0;border-left:9px solid ${color};border-top:6px solid transparent;border-bottom:6px solid transparent"></span>`;
+        layer.appendChild(a);
+      }
+    }
+    if (caption) {
+      const c = document.createElement('div');
+      Object.assign(c.style, {
+        position: 'absolute', left: '50%', bottom: '14px', transform: 'translateX(-50%)',
+        background: 'rgba(17,24,39,.9)', color: '#fff', padding: '8px 16px', borderRadius: '8px',
+        font: '600 15px/1.4 -apple-system,"PingFang SC",sans-serif', whiteSpace: 'nowrap',
+      });
+      c.textContent = caption;
+      layer.appendChild(c);
+    }
+  }, { items, caption });
+  await sleep(120);
+}
+
+export async function clearSteps(page) {
+  await page.evaluate(() => document.querySelectorAll('.fx-steps').forEach((e) => e.remove()));
+}

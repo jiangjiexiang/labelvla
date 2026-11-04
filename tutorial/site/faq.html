@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>常见问题 · LabelVLA 文档</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a class="brand" href="index.html">LabelVLA 文档 <span>· 使用指南</span></a>
+    <a class="backlink" href="/" data-local="http://127.0.0.1:8002/">← 返回数据平台</a>
+    <span class="right">最后更新 2026-11-04</span>
+  </div>
+</div>
+<div class="shell">
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">操作指南</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html" class='on'>常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <main>
+    <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>常见问题</span></p>
+    
+<h1>常见问题</h1>
+<table>
+  <tr><th>现象</th><th>处理</th></tr>
+  <tr><td>提示「请先在 Studio 点击保存修改」</td><td>工作区还有未写回的改动：回到工作区点顶部「保存修改」，等「已保存」后再提交。</td></tr>
+  <tr><td>右侧没有「SAM 点选分割」</td><td>需要先选中一个片段；只读的审核模式下也不会出现。</td></tr>
+  <tr><td>SAM 返回很大的框</td><td>没点中目标：点「放弃对象」重新点，或换到视野更完整的相机。</td></tr>
+  <tr><td>传播跟踪进度长时间不动</td><td>推理服务排队或显存不足，稍等或联系管理员重启 SAM 服务。</td></tr>
+  <tr><td>提示「资源加载失败」</td><td>点选那一帧还没有轮廓，传播跟踪跑完后会正常。关掉弹窗继续操作即可。</td></tr>
+  <tr><td>提示「标注已被其他会话修改」</td><td>同一条 Episode 被别处保存过：刷新页面重新加载后再改。</td></tr>
+  <tr><td>程序质检不通过</td><td>多半还有 Episode 没标注：用「转回节点」退回标注节点，补完再提交。</td></tr>
+  <tr><td>点「完成人工标注」没反应</td><td>任务必须先保存修改；确认本人是任务负责人或管理员。</td></tr>
+  <tr><td>管理员密码忘了</td><td>默认是 <code>admin123</code>（首次部署未改密时为 <code>admin</code>）。都登录不了就让管理员在「用户管理」里重置，或联系部署方处理数据库。</td></tr>
+</table>
+
+    <nav class="pager"><a href="guide-release.html"><span class="k">上一页</span>6. 审核与版本发布</a><a class="next" href="shortcuts.html"><span class="k">下一页</span>快捷键</a></nav>
+  </main>
+  <aside class="toc-right"></aside>
+</div>
+<footer>LabelVLA 文档</footer>
+<script>
+  // 图片：平台内以 /help/ 提供时用 /help/images/…，本地双击打开时用 ../images/…
+  (function () {
+    var prefix = location.pathname.startsWith('/help/') ? '/help/' : '../';
+    document.querySelectorAll('img[data-rel]').forEach(function (i) { i.src = prefix + i.getAttribute('data-rel'); });
+  })();
+  // 本地双击打开时，「返回数据平台」指向默认平台地址
+  (function () {
+    if (location.protocol === 'file:') {
+      document.querySelectorAll('a[data-local]').forEach(function (a) { a.href = a.getAttribute('data-local'); });
+    }
+  })();
+  // 平台内以 /help/ 提供时，站内相对链接与样式路径统一补前缀；本地双击打开则保持相对路径
+  (function () {
+    if (!location.pathname.startsWith('/help/')) return;
+    var map = { '': '/help/index.html', 'index.html': '/help/index.html' };
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (!h || h.startsWith('/') || h.startsWith('#') || h.startsWith('data:') || h.startsWith('http')) return;
+      a.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('link[rel=stylesheet]').forEach(function (l) {
+      var h = l.getAttribute('href');
+      if (h && !h.startsWith('/')) l.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('img[data-rel]').forEach(function (i) {
+      var h = i.getAttribute('data-rel');
+      i.src = location.pathname.startsWith('/help/') ? '/help/' + h : h;
+    });
+  })();
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-right a'));
+    if (!links.length) return;
+    var targets = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    function update() {
+      var y = window.scrollY + 120, current = null;
+      targets.forEach(function (t) { if (t.offsetTop <= y) current = t.id; });
+      links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + current); });
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+</script>
+</body>
+</html>

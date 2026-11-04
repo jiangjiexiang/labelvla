@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4. SAM 辅助分割 · LabelVLA 文档</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a class="brand" href="index.html">LabelVLA 文档 <span>· 使用指南</span></a>
+    <a class="backlink" href="/" data-local="http://127.0.0.1:8002/">← 返回数据平台</a>
+    <span class="right">最后更新 2026-11-04</span>
+  </div>
+</div>
+<div class="shell">
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">操作指南</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html" class='on'>4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <main>
+    <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>4. SAM 辅助分割</span></p>
+    
+<h1>4. SAM 辅助分割</h1>
+<p class="lead">SAM 点一下目标就能分割出轮廓，并沿整段视频逐帧跟踪，省去手工画每一帧。它由独立部署的推理服务提供；没有配置时按钮会出现，但点击后无法建立会话。</p>
+
+<h2 id="steps">操作步骤</h2>
+<ol class="steps"><li><b>选中片段</b>例如「抓取食物」。没有选中片段时，SAM 面板不会出现。</li><li><b>点「SAM 点选分割」</b>首次使用会上传当前 Episode 视频建立会话，面板显示「SAM 就绪」后即可点选。</li><li><b>在目标上点一下</b>画面出现蓝色轮廓和绿色圆点，表示可以继续加点修正；按住 <kbd>Shift</kbd> 点背景可以作为负点修正。</li><li><b>点「传播跟踪」</b>按钮上实时显示进度（例如 240/600 帧），结束后提示「已生成目标框：N 帧轨迹」。</li><li><b>保存</b>按 <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>S</kbd> 或点右上角「保存」，轮廓在后台落盘，刷新后仍可查看。</li></ol>
+<figure><img data-rel="images/18-sam-ready.jpg" src="../images/18-sam-ready.jpg" alt="SAM 就绪"><figcaption>图 7　「SAM 点选分割」就绪：面板显示当前相机，可以开始在画面上点选</figcaption></figure>
+<figure><img data-rel="images/19-sam-point.jpg" src="../images/19-sam-point.jpg" alt="SAM 点选结果"><figcaption>图 8　点选结果：蓝色区域是分割轮廓，右侧给出对象编号和框尺寸</figcaption></figure>
+
+<h2 id="caveat">注意事项</h2>
+<div class="note warn"><b>返回的框特别大：</b>说明没点中目标（模型把桌面、墙面当成了目标）。点「放弃对象」换个位置再点，或换到视野更完整的相机重试。</div>
+<p>其他几点实测经验：</p>
+<ul>
+  <li>腕部相机视野窄、遮挡多，通常不如正面相机点得准。</li>
+  <li>点选的那一帧已经出结果，但其他帧要等「传播跟踪」跑完才有轮廓，中途报「资源加载失败」属于正常现象。</li>
+  <li>传播是整段视频一起算的，进度条跑完再切换帧查看。</li>
+</ul>
+
+    <nav class="pager"><a href="guide-studio.html"><span class="k">上一页</span>3. 标注工作台</a><a class="next" href="guide-submit.html"><span class="k">下一页</span>5. 保存与提交</a></nav>
+  </main>
+  <aside class="toc-right"><p class="t">本页</p><a href="#steps">操作步骤</a><a href="#caveat">注意事项</a></aside>
+</div>
+<footer>LabelVLA 文档</footer>
+<script>
+  // 图片：平台内以 /help/ 提供时用 /help/images/…，本地双击打开时用 ../images/…
+  (function () {
+    var prefix = location.pathname.startsWith('/help/') ? '/help/' : '../';
+    document.querySelectorAll('img[data-rel]').forEach(function (i) { i.src = prefix + i.getAttribute('data-rel'); });
+  })();
+  // 本地双击打开时，「返回数据平台」指向默认平台地址
+  (function () {
+    if (location.protocol === 'file:') {
+      document.querySelectorAll('a[data-local]').forEach(function (a) { a.href = a.getAttribute('data-local'); });
+    }
+  })();
+  // 平台内以 /help/ 提供时，站内相对链接与样式路径统一补前缀；本地双击打开则保持相对路径
+  (function () {
+    if (!location.pathname.startsWith('/help/')) return;
+    var map = { '': '/help/index.html', 'index.html': '/help/index.html' };
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (!h || h.startsWith('/') || h.startsWith('#') || h.startsWith('data:') || h.startsWith('http')) return;
+      a.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('link[rel=stylesheet]').forEach(function (l) {
+      var h = l.getAttribute('href');
+      if (h && !h.startsWith('/')) l.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('img[data-rel]').forEach(function (i) {
+      var h = i.getAttribute('data-rel');
+      i.src = location.pathname.startsWith('/help/') ? '/help/' + h : h;
+    });
+  })();
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-right a'));
+    if (!links.length) return;
+    var targets = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    function update() {
+      var y = window.scrollY + 120, current = null;
+      targets.forEach(function (t) { if (t.offsetTop <= y) current = t.id; });
+      links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + current); });
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2. 新建标注任务 · LabelVLA 文档</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a class="brand" href="index.html">LabelVLA 文档 <span>· 使用指南</span></a>
+    <a class="backlink" href="/" data-local="http://127.0.0.1:8002/">← 返回数据平台</a>
+    <span class="right">最后更新 2026-11-04</span>
+  </div>
+</div>
+<div class="shell">
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">操作指南</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html" class='on'>2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <main>
+    <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>2. 新建标注任务</span></p>
+    
+<h1>2. 新建标注任务</h1>
+<p class="lead">任务必须绑定一个真实数据集。创建时会自动在 <code>output/数据集名/数据集名vN</code> 建独立副本，之后所有标注只写副本，原始数据不动。</p>
+
+<h2 id="create">新建任务</h2>
+<ol class="steps"><li><b>任务管理 → 新建任务</b>填写任务名称，任务类型选「视频标注任务」。</li><li><b>关联数据集</b>选择要标注的数据集。要接着已有版本改，就在「起始版本」里选对应版本，否则从原始数据开始。</li><li><b>分配负责人</b>标注负责人只能保存自己的任务；审核负责人负责验收。两个人可以是同一账号，生产环境建议分开。</li><li><b>写任务描述</b>把标注要求写清楚，标注员打开任务就能看到。</li></ol>
+<figure><img data-rel="images/05-task-create.jpg" src="../images/05-task-create.jpg" alt="新建任务"><figcaption>图 3　新建任务：任务名、关联数据集、标注负责人、审核负责人</figcaption></figure>
+<div class="note">创建后任务会自动执行「预处理」，然后停在「人工标注」等人处理，不会自动往下走。</div>
+
+<h2 id="detail">任务详情与节点</h2>
+<p>详情页上半部分是任务信息和当前进度；下半部分列出五个节点，展开可以看到执行时间、耗时和产出。标注节点上有「进入工作区」按钮。</p>
+<figure><img data-rel="images/task-detail.jpg" src="../images/task-detail.jpg" alt="任务详情"><figcaption>图 4　任务详情：上半部分是任务信息和当前进度，下半部分是节点详情</figcaption></figure>
+<div class="note"><b>流程走偏了怎么办：</b>管理员可以用「转回节点」把流程退回更早的节点重跑，需要填写原因，操作会记入执行事件</div>
+
+    <nav class="pager"><a href="guide-login.html"><span class="k">上一页</span>1. 登录与数据管理</a><a class="next" href="guide-studio.html"><span class="k">下一页</span>3. 标注工作台</a></nav>
+  </main>
+  <aside class="toc-right"><p class="t">本页</p><a href="#create">新建</a><a href="#detail">任务详情</a></aside>
+</div>
+<footer>LabelVLA 文档</footer>
+<script>
+  // 图片：平台内以 /help/ 提供时用 /help/images/…，本地双击打开时用 ../images/…
+  (function () {
+    var prefix = location.pathname.startsWith('/help/') ? '/help/' : '../';
+    document.querySelectorAll('img[data-rel]').forEach(function (i) { i.src = prefix + i.getAttribute('data-rel'); });
+  })();
+  // 本地双击打开时，「返回数据平台」指向默认平台地址
+  (function () {
+    if (location.protocol === 'file:') {
+      document.querySelectorAll('a[data-local]').forEach(function (a) { a.href = a.getAttribute('data-local'); });
+    }
+  })();
+  // 平台内以 /help/ 提供时，站内相对链接与样式路径统一补前缀；本地双击打开则保持相对路径
+  (function () {
+    if (!location.pathname.startsWith('/help/')) return;
+    var map = { '': '/help/index.html', 'index.html': '/help/index.html' };
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (!h || h.startsWith('/') || h.startsWith('#') || h.startsWith('data:') || h.startsWith('http')) return;
+      a.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('link[rel=stylesheet]').forEach(function (l) {
+      var h = l.getAttribute('href');
+      if (h && !h.startsWith('/')) l.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('img[data-rel]').forEach(function (i) {
+      var h = i.getAttribute('data-rel');
+      i.src = location.pathname.startsWith('/help/') ? '/help/' + h : h;
+    });
+  })();
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-right a'));
+    if (!links.length) return;
+    var targets = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    function update() {
+      var y = window.scrollY + 120, current = null;
+      targets.forEach(function (t) { if (t.offsetTop <= y) current = t.id; });
+      links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + current); });
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+</script>
+</body>
+</html>

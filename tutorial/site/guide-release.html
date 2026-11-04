@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6. 审核与版本发布 · LabelVLA 文档</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a class="brand" href="index.html">LabelVLA 文档 <span>· 使用指南</span></a>
+    <a class="backlink" href="/" data-local="http://127.0.0.1:8002/">← 返回数据平台</a>
+    <span class="right">最后更新 2026-11-04</span>
+  </div>
+</div>
+<div class="shell">
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">操作指南</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html" class='on'>6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <main>
+    <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>6. 审核与版本发布</span></p>
+    
+<h1>6. 审核与版本发布</h1>
+<p class="lead">审核人打开同一个任务，看到的是只读副本，标注面板顶部只有「通过 / 打回」。</p>
+
+<h2 id="qc">视频质检</h2>
+<ol class="steps"><li><b>查看视频质检</b>审核人点「查看视频质检」进入工作区，播放视频检查片段边界、描述和目标框。</li><li><b>通过或打回</b>点「质检通过」确认视频；打回必须填写原因，任务退回标注节点。</li><li><b>确认后自动发布</b>视频质检通过后，系统自动执行程序质检和版本发布，任务状态变为「已完成」。</li></ol>
+
+<h2 id="program">程序质检</h2>
+<p>程序质检逐条检查 Episode 是否都有标注。未标注的必须填写跳过原因，否则这个节点会失败，任务停在「程序质检」。</p>
+<div class="note">任务失败时用「转回节点」退回「人工标注」，补完再提交，不需要新建任务。</div>
+
+<h2 id="versions">版本记录</h2>
+<p>在「版本管理」里按发布顺序查看每个版本：Episodes 数、大小、状态、校验摘要，可下载完整数据包。旧版本不会被覆盖。</p>
+<table>
+  <tr><th>版本</th><th>含义</th></tr>
+  <tr><td>V1.0、V2.0 …</td><td>发布顺序，不代表采集顺序</td></tr>
+  <tr><td>标注中</td><td>任务已建但还没发布，数据包不完整</td></tr>
+  <tr><td>已发布</td><td>有完整数据包和校验摘要，可下载</td></tr>
+</table>
+
+    <nav class="pager"><a href="guide-submit.html"><span class="k">上一页</span>5. 保存与提交</a><a class="next" href="faq.html"><span class="k">下一页</span>常见问题</a></nav>
+  </main>
+  <aside class="toc-right"><p class="t">本页</p><a href="#qc">视频质检</a><a href="#program">程序质检</a><a href="#versions">版本记录</a></aside>
+</div>
+<footer>LabelVLA 文档</footer>
+<script>
+  // 图片：平台内以 /help/ 提供时用 /help/images/…，本地双击打开时用 ../images/…
+  (function () {
+    var prefix = location.pathname.startsWith('/help/') ? '/help/' : '../';
+    document.querySelectorAll('img[data-rel]').forEach(function (i) { i.src = prefix + i.getAttribute('data-rel'); });
+  })();
+  // 本地双击打开时，「返回数据平台」指向默认平台地址
+  (function () {
+    if (location.protocol === 'file:') {
+      document.querySelectorAll('a[data-local]').forEach(function (a) { a.href = a.getAttribute('data-local'); });
+    }
+  })();
+  // 平台内以 /help/ 提供时，站内相对链接与样式路径统一补前缀；本地双击打开则保持相对路径
+  (function () {
+    if (!location.pathname.startsWith('/help/')) return;
+    var map = { '': '/help/index.html', 'index.html': '/help/index.html' };
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (!h || h.startsWith('/') || h.startsWith('#') || h.startsWith('data:') || h.startsWith('http')) return;
+      a.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('link[rel=stylesheet]').forEach(function (l) {
+      var h = l.getAttribute('href');
+      if (h && !h.startsWith('/')) l.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('img[data-rel]').forEach(function (i) {
+      var h = i.getAttribute('data-rel');
+      i.src = location.pathname.startsWith('/help/') ? '/help/' + h : h;
+    });
+  })();
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-right a'));
+    if (!links.length) return;
+    var targets = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    function update() {
+      var y = window.scrollY + 120, current = null;
+      targets.forEach(function (t) { if (t.offsetTop <= y) current = t.id; });
+      links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + current); });
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+</script>
+</body>
+</html>

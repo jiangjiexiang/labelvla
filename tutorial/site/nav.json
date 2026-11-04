@@ -1,0 +1,64 @@
+{
+  "groups": [
+    {
+      "title": "开始",
+      "items": [
+        {
+          "file": "index.html",
+          "label": "概览"
+        },
+        {
+          "file": "demo.html",
+          "label": "流程演示"
+        }
+      ]
+    },
+    {
+      "title": "操作指南",
+      "items": [
+        {
+          "file": "guide-login.html",
+          "label": "1. 登录与数据管理"
+        },
+        {
+          "file": "guide-task.html",
+          "label": "2. 新建标注任务"
+        },
+        {
+          "file": "guide-studio.html",
+          "label": "3. 标注工作台"
+        },
+        {
+          "file": "guide-sam.html",
+          "label": "4. SAM 辅助分割"
+        },
+        {
+          "file": "guide-submit.html",
+          "label": "5. 保存与提交"
+        },
+        {
+          "file": "guide-release.html",
+          "label": "6. 审核与版本发布"
+        }
+      ]
+    },
+    {
+      "title": "参考",
+      "items": [
+        {
+          "file": "faq.html",
+          "label": "常见问题"
+        },
+        {
+          "file": "shortcuts.html",
+          "label": "快捷键"
+        },
+        {
+          "file": "roles.html",
+          "label": "角色与权限"
+        }
+      ]
+    }
+  ],
+  "home": "/"
+}

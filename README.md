@@ -4,7 +4,7 @@ LabelVLA 用来管理和标注机器人数据，支持 LeRobot v2.x / v3.0 格�
 
 任务分别指定标注人和审核人。标注完成后，审核人查看视频，通过后再打包发布；有问题就打回重标。发布任务时自动创建 output 版本副本，后续标注和保存直接写入该版本；审核通过后锁定，保留旧版本。
 
-[部署文档](docs/deployment.md) · [GitHub 源码](https://github.com/jiangjiexiang/labelvla) · [Docker 镜像](https://github.com/users/jiangjiexiang/packages/container/package/labelvla)
+[使用指南（截图 + 录屏）](tutorial/site/index.html) · [部署文档](docs/deployment.md) · [GitHub 源码](https://github.com/jiangjiexiang/labelvla) · [Docker 镜像](https://github.com/users/jiangjiexiang/packages/container/package/labelvla)
 
 ![LabelVLA 标注工作台](docs/images/studio.jpg)
 
@@ -112,6 +112,7 @@ labelvla-docker/
 
 ## 其他文档
 
+- [使用指南（截图 + 录屏）](tutorial/site/index.html)
 - [平台设计](docs/platform-design.md)
 - [数据集版本](docs/dataset-versions.md)
 - [SAM 接口约定](docs/sam3-api-requirements.md)

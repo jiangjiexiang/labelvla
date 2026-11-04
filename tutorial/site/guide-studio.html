@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3. 标注工作台 · LabelVLA 文档</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a class="brand" href="index.html">LabelVLA 文档 <span>· 使用指南</span></a>
+    <a class="backlink" href="/" data-local="http://127.0.0.1:8002/">← 返回数据平台</a>
+    <span class="right">最后更新 2026-11-04</span>
+  </div>
+</div>
+<div class="shell">
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">操作指南</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html" class='on'>3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <main>
+    <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>3. 标注工作台</span></p>
+    
+<h1>3. 标注工作台</h1>
+<p class="lead">点「进入工作区」后首次加载会创建任务副本，稍等几秒。进入后先点「开始标注」，再点左侧「编辑」，片段轨道才能编辑。</p>
+
+<h2 id="enter">进入工作区</h2>
+<ol class="steps"><li><b>进入工作区</b>在任务详情页「人工标注」节点点「进入工作区」。</li><li><b>开始标注</b>右上角点「开始标注」，Episode 状态变成「标注中」。只有标注员或管理员能编辑。</li><li><b>开启编辑</b>左侧栏点「编辑」，下方出现可编辑的片段轨道。</li></ol>
+
+<h2 id="layout">界面分区</h2>
+<figure><img data-rel="images/studio.jpg" src="../images/studio.jpg" alt="标注工作台"><figcaption>图 5　标注工作台：左侧 Episode、中间相机、下方时间轴、右侧标注面板</figcaption></figure>
+<table>
+  <tr><th>区域</th><th>用途</th></tr>
+  <tr><td>Episode 列表</td><td>切换数据、搜索、开启编辑，也可逐条标记通过</td></tr>
+  <tr><td>相机画面</td><td>多路视频同帧显示，可增删相机列</td></tr>
+  <tr><td>曲线 / 原始数据</td><td>关节曲线和逐帧原始值，帮助判断动作边界</td></tr>
+  <tr><td>时间轴</td><td>播放、逐帧、倍速、裁剪；下方是片段轨道</td></tr>
+  <tr><td>标注面板</td><td>片段、结构化描述、目标框、SAM 入口、保存与提交</td></tr>
+</table>
+
+<h2 id="segments">划分动作片段</h2>
+<p>一条 Episode 通常包含抓取、移动、放置几个动作。把每个动作划成独立片段，后面的描述和目标框都挂在片段上。</p>
+<ol class="steps"><li><b>点未标注区域</b>在片段轨道的斜纹区点一下，弹出「子任务」对话框，填写名称，例如「抓取食物」「放到托盘」。</li><li><b>拖两端调边界</b>鼠标移到片段边缘出现白色拖拽把手，左右拖动调整起止帧；剩余的未标注区域会补成新的斜纹段，继续点它给下一段命名。</li><li><b>可以反复调整</b>片段可以多次拖拽，直到起止帧和视频里的动作对得上。</li></ol>
+<div class="note warn"><b>注意：</b>界面底部提示的 <kbd>Q</kbd> 起点、<kbd>R</kbd> 终点、<kbd>Enter</kbd> 新建片段快捷键在当前版本没有生效，请用鼠标点轨道和拖拽边界来划分。</div>
+
+<h2 id="describe">写描述与画目标框</h2>
+<ol class="steps"><li><b>选中片段</b>点一下轨道上的片段，右侧面板显示「当前 Subtask 片段」。</li><li><b>填结构化描述</b>技能 / 对象 / 目标 / 状语四个下拉框，既可选择也可直接输入新词后回车，会自动拼成描述句。</li><li><b>画目标框</b>在任一相机画面按住拖动即可画框。一个片段可以画多个框。</li></ol>
+<figure><img data-rel="images/09-annotation-panel.jpg" src="../images/09-annotation-panel.jpg" alt="标注面板"><figcaption>图 6　选中片段后的标注面板：片段、结构化描述、目标框、SAM 入口</figcaption></figure>
+<div class="note tip"><b>建议：</b>只标关键物体（例如被拿取的那一个碗），比把所有物体都标上省时间，程序质检也更容易通过。</div>
+
+    <nav class="pager"><a href="guide-task.html"><span class="k">上一页</span>2. 新建标注任务</a><a class="next" href="guide-sam.html"><span class="k">下一页</span>4. SAM 辅助分割</a></nav>
+  </main>
+  <aside class="toc-right"><p class="t">本页</p><a href="#enter">进入工作区</a><a href="#layout">界面分区</a><a href="#segments">划分片段</a><a href="#describe">描述与目标框</a></aside>
+</div>
+<footer>LabelVLA 文档</footer>
+<script>
+  // 图片：平台内以 /help/ 提供时用 /help/images/…，本地双击打开时用 ../images/…
+  (function () {
+    var prefix = location.pathname.startsWith('/help/') ? '/help/' : '../';
+    document.querySelectorAll('img[data-rel]').forEach(function (i) { i.src = prefix + i.getAttribute('data-rel'); });
+  })();
+  // 本地双击打开时，「返回数据平台」指向默认平台地址
+  (function () {
+    if (location.protocol === 'file:') {
+      document.querySelectorAll('a[data-local]').forEach(function (a) { a.href = a.getAttribute('data-local'); });
+    }
+  })();
+  // 平台内以 /help/ 提供时，站内相对链接与样式路径统一补前缀；本地双击打开则保持相对路径
+  (function () {
+    if (!location.pathname.startsWith('/help/')) return;
+    var map = { '': '/help/index.html', 'index.html': '/help/index.html' };
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (!h || h.startsWith('/') || h.startsWith('#') || h.startsWith('data:') || h.startsWith('http')) return;
+      a.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('link[rel=stylesheet]').forEach(function (l) {
+      var h = l.getAttribute('href');
+      if (h && !h.startsWith('/')) l.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('img[data-rel]').forEach(function (i) {
+      var h = i.getAttribute('data-rel');
+      i.src = location.pathname.startsWith('/help/') ? '/help/' + h : h;
+    });
+  })();
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-right a'));
+    if (!links.length) return;
+    var targets = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    function update() {
+      var y = window.scrollY + 120, current = null;
+      targets.forEach(function (t) { if (t.offsetTop <= y) current = t.id; });
+      links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + current); });
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+</script>
+</body>
+</html>

@@ -254,3 +254,7 @@
 .g-task-table th:nth-child(3){width:12%}
 .g-task-table th:nth-child(4){width:8%}
 .g-task-table th:nth-child(5){width:9%}
+
+/* 帮助中心：顶部导航直达使用指南（/help/），在页面内打开，可回退 */
+.g-user>a.g-help-link{display:flex;align-items:center;gap:5px;border:0;background:transparent;color:inherit;text-decoration:none}
+.g-user>a.g-help-link:hover{color:var(--g-primary)}

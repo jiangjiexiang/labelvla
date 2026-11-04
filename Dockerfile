@@ -19,6 +19,8 @@ ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 RUN pip install --timeout 120 --retries 3 --index-url "$PIP_INDEX_URL" -r requirements.lock
 RUN rm -rf /app/backend /app/static
 COPY backend/ /app/backend/
+# 帮助中心：平台顶部「帮助中心」打开的多页使用指南
+COPY tutorial/site/ /app/static/help/
 COPY frontend/LICENSE /app/licenses/Studio-LICENSE
 COPY frontend/NOTICE /app/licenses/Studio-NOTICE
 COPY backend/LICENSE /app/licenses/LabelVLA-LICENSE

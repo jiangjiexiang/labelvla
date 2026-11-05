@@ -60,14 +60,14 @@
 
 <h2 id="bbox">手动补画目标框（兜底）</h2>
 <p>SAM 服务不可用、目标太小点不准，或者传播后个别帧框偏了，才需要手动处理。</p>
-<figure class="step"><figcaption class="step-title"><b>第 12 步　手动画框或修正</b><span>在相机画面按住拖动即可画框，画好的框出现在右侧「目标框」列表里；已有的框也能直接拖动调整</span></figcaption><img data-rel="images/steps/bbox-1.jpg" src="../images/steps/bbox-1.jpg" alt="第 12 步　手动画框或修正" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 12 步　手动画框或修正</b><span>在相机画面按住拖动即可画框，画好的框出现在右侧「目标框」列表里；已有框可以直接拖动调整</span></figcaption><img data-rel="images/steps/bbox-1.jpg" src="../images/steps/bbox-1.jpg" alt="第 12 步　手动画框或修正" loading="lazy"></figure>
 
 <h2 id="submit">保存与提交</h2>
 <p>工作台有两个「保存」：面板右上角的「保存」只存当前 Episode，「保存修改」会先存当前 Episode，再把整个工作区写回任务版本。</p>
 <figure class="step"><figcaption class="step-title"><b>第 13 步　看顶部保存状态</b><span>① 「保存修改」　② 状态显示「未保存」，说明还有改动没写回</span></figcaption><img data-rel="images/steps/save-1.jpg" src="../images/steps/save-1.jpg" alt="第 13 步　看顶部保存状态" loading="lazy"></figure>
 <figure class="step"><figcaption class="step-title"><b>第 14 步　保存修改并等「已保存」</b><span>① 点「保存修改」　② 状态变成「已保存」才算写回任务版本</span></figcaption><img data-rel="images/steps/save-2.jpg" src="../images/steps/save-2.jpg" alt="第 14 步　保存修改并等「已保存」" loading="lazy"></figure>
 <figure class="step"><figcaption class="step-title"><b>随时　单独保存这一条</b><span>面板右上角的「保存」只存当前 Episode，没有改动时按钮是灰的</span></figcaption><img data-rel="images/steps/save-3.jpg" src="../images/steps/save-3.jpg" alt="随时　单独保存这一条" loading="lazy"></figure>
-<div class="note">面板「保存」没点也不会丢：「保存修改」会先替你存当前这条。但没保存就换 Episode、切数据集会被拦住，并提示「请先保存上一片段的标注」。只有关掉浏览器标签页才会弹「离开此网站？」。</div>
+<div class="note warn"><b>注意：</b>没保存就切换 Episode，当前这条未保存的改动会丢掉（页面不会拦你）。所以离开一条 Episode 前，确认顶部不是「未保存」；面板右上角的「保存」没点不要紧，「保存修改」会先替你存当前这条。</div>
 <figure class="step"><figcaption class="step-title"><b>第 15 步　提交审核</b><span>回到任务详情页，在「人工标注」节点点「完成人工标注」</span></figcaption><img data-rel="images/steps/review-3.jpg" src="../images/steps/review-3.jpg" alt="第 15 步　提交审核" loading="lazy"></figure>
 <p>审核打回时任务退回「人工标注」，按打回原因改完点「修改后重新提交」。有未写回的改动时，「完成人工标注」是灰的。</p>
 

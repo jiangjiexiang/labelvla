@@ -59,7 +59,7 @@ export function AnnotationOverlay({width,height,featureKey,interactive,videoRef,
   const down=(e:React.PointerEvent<SVGSVGElement>)=>{if(!inside)return; const p=xy(e,false); if(!p)return; a.pause(); if(a.sam.mode){void a.samPoint(p.x,p.y,!e.shiftKey);return;} if(a.track){patchBox(b=>({...b,keypoints:[...b.keypoints.filter(k=>k.frame!==a.frame),{frame:a.frame,cx:p.x,cy:p.y}].sort((x,y)=>x.frame-y.frame)}));return;} e.currentTarget.setPointerCapture(e.pointerId);setDrag({start:p,end:p});};
   const up=(e:React.PointerEvent<SVGSVGElement>)=>{if(!drag||!seg)return;const p=xy(e)||drag.end; const x=Math.min(drag.start.x,p.x),y=Math.min(drag.start.y,p.y),w=Math.abs(p.x-drag.start.x),h=Math.abs(p.y-drag.start.y);setDrag(null);if(w<4||h<4)return;const label=a.boxLabel.trim();if(!label)return; const box={id:null,x,y,width:w,height:h,label:label.trim(),keypoints:[],camera:featureKey}; a.update(a.segments.map((s,i)=>i===a.selected?{...s,bboxes:[...s.bboxes,box]}:s));a.selectBox(seg.bboxes.length);};
   const fontSize=Math.max(12,width/50);
-  const bannerText=a.sam.mode?(a.sam.busy?'SAM 处理中…':'SAM 点选 · 点击=正点 Shift+点击=负点'):a.track?`标记轨迹中 · 第 ${a.frame} 帧`:`拖动创建目标框 · 第 ${a.frame} 帧`;
+  const bannerText=a.sam.mode?(a.sam.busy?'SAM 处理中…':'SAM 点选 · 点击=正点 Shift+点击=负点'):a.track?`标记轨迹中 · 第 ${a.frame} 帧`:`补画目标框 · 第 ${a.frame} 帧（SAM 不可用时的手动用）`;
   const maskUrl=interactive&&a.sam.objectId!==null&&(a.sam.propagated||a.frame===a.sam.promptFrame)?a.samMaskUrl(drawFrame):null;
   const hasOwnBoxes=a.segments.some(s=>drawFrame>=s.start_frame&&drawFrame<=s.end_frame&&s.bboxes.some(ownBox));
   if(!interactive && !hasOwnBoxes) return null;

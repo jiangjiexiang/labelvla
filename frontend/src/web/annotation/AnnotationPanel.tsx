@@ -202,7 +202,7 @@ export function AnnotationPanel() {
             <>
               <Separator />
               <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-medium text-muted-foreground">目标框 / 手动轨迹</span>
+                <span className="text-[11px] font-medium text-muted-foreground">目标框 / 关键点轨迹</span>
                 <input
                   aria-label="目标框名称"
                   list="dict-boxlabel"
@@ -224,7 +224,7 @@ export function AnnotationPanel() {
                   <p className="m-0 text-[11px] text-muted-foreground">
                     {a.track
                       ? `标记轨迹中 · 第 ${a.frame} 帧：点击画面设置目标中心。`
-                      : '在第一个相机画面拖动以创建目标框。'}
+                      : '目标框优先用 SAM 生成；SAM 不可用时才在画面拖动补画。'}
                   </p>
                 )}
 

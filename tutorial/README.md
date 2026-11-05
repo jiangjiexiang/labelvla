@@ -83,6 +83,7 @@ TASK_ID=<任务ID> node sam_stills.mjs
 # 一步一图的带标注截图（输出到 images/steps/，需按章节顺序分 4 段执行）
 TASK_ID=<任务ID> node capture_steps.mjs && TASK_ID=<任务ID> node capture_steps2.mjs
 TASK_ID=<任务ID> node capture_sam_clean.mjs   # 单独重截 SAM 点选那张（会先关掉轮廓预览）
+TASK_ID=<任务ID> node capture_save.mjs        # 单独重截「保存」三张（保存修改前/后、面板保存）
 # …… 任务流转到人工验收后再执行：
 TASK_ID=<任务ID> node capture_steps3.mjs && node capture_steps4.mjs
 

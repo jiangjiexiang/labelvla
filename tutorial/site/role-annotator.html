@@ -26,7 +26,7 @@
 <table>
   <tr><th>能做</th><th>不能做</th></tr>
   <tr><td>打开分配给自己的任务、进入工作区标注</td><td>新建任务、分配负责人</td></tr>
-  <tr><td>划片段、写描述、画目标框、用 SAM 辅助</td><td>审核通过、打回、发布版本</td></tr>
+  <tr><td>划片段、写描述、用 SAM 点选生成目标框并传播跟踪</td><td>审核通过、打回、发布版本</td></tr>
   <tr><td>单条 Episode 点「通过」「数据不可用，跳过标注」并填原因</td><td>修改数据集、管理账号、编辑流程</td></tr>
   <tr><td>保存工作区、提交审核、被退回后修改重提</td><td>改别人负责的任务</td></tr>
 </table>
@@ -44,26 +44,31 @@
 <figure class="step"><figcaption class="step-title"><b>第 6 步　拖边界对齐动作</b><span>鼠标移到片段边缘出现把手，左右拖动调整起止帧；剩下的斜纹区再点一下，给下一段命名</span></figcaption><img data-rel="images/steps/segment-3.jpg" src="../images/steps/segment-3.jpg" alt="第 6 步　拖边界对齐动作" loading="lazy"></figure>
 <div class="note warn"><b>注意：</b>界面底部提示的 <kbd>Q</kbd> / <kbd>R</kbd> / <kbd>Enter</kbd> 快捷键在当前版本没生效，用鼠标点轨道和拖拽边界即可。</div>
 
-<h2 id="describe">写描述与画框</h2>
+<h2 id="describe">写描述</h2>
 <figure class="step"><figcaption class="step-title"><b>第 7 步　填结构化描述</b><span>① 点轨道上的片段选中　② 技能　③ 对象　④ 目标；可下拉选择，也可输入新词后回车</span></figcaption><img data-rel="images/steps/describe-1.jpg" src="../images/steps/describe-1.jpg" alt="第 7 步　填结构化描述" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>填完自动成句</b><span>四个字段合成一句描述，显示在面板「当前 Subtask 片段」下方</span></figcaption><img data-rel="images/steps/describe-2.jpg" src="../images/steps/describe-2.jpg" alt="填完自动成句" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 8 步　画目标框</b><span>在任一相机画面按住拖动即可画框，画好的框出现在右侧「目标框」列表里</span></figcaption><img data-rel="images/steps/bbox-1.jpg" src="../images/steps/bbox-1.jpg" alt="第 8 步　画目标框" loading="lazy"></figure>
-<div class="note tip"><b>建议：</b>只标关键物体（例如被拿取的那一个碗），比把所有物体都标上更省时间，程序质检也更容易通过。</div>
+<figure class="step"><figcaption class="step-title"><b>第 8 步　描述自动成句</b><span>四个字段合成一句描述，显示在面板「当前 Subtask 片段」下方</span></figcaption><img data-rel="images/steps/describe-2.jpg" src="../images/steps/describe-2.jpg" alt="第 8 步　描述自动成句" loading="lazy"></figure>
 
-<h2 id="sam">SAM 辅助（可选）</h2>
-<p>物体形状不规则、手画框慢的时候，用 SAM 点一下自动分割并跟踪整段视频。</p>
-<figure class="step"><figcaption class="step-title"><b>第 9 步　打开 SAM</b><span>先在轨道上选中片段，面板底部才会出现「SAM 点选分割」</span></figcaption><img data-rel="images/steps/sam-1.jpg" src="../images/steps/sam-1.jpg" alt="第 9 步　打开 SAM" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 10 步　选相机并点选</b><span>① 选择相机　② 等显示「SAM 就绪」后，在画面上点一下目标</span></figcaption><img data-rel="images/steps/sam-2.jpg" src="../images/steps/sam-2.jpg" alt="第 10 步　选相机并点选" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 11 步　确认轮廓并传播</b><span>出现蓝色轮廓和绿色圆点后，点「传播跟踪」，跑完提示「已生成目标框：N 帧轨迹」</span></figcaption><img data-rel="images/steps/sam-3.jpg" src="../images/steps/sam-3.jpg" alt="第 11 步　确认轮廓并传播" loading="lazy"></figure>
+<h2 id="sam">标注目标框（SAM，主要方式）</h2>
+<p>目标框主要靠 SAM 生成：在画面上点一下目标，SAM 分割出轮廓，再沿整段视频逐帧跟踪，一次就能得到整个片段的框。手动画框只用来兜底（SAM 服务不可用，或个别帧需要修正时）。</p>
+<figure class="step"><figcaption class="step-title"><b>第 9 步　打开 SAM</b><span>选中片段后，面板底部点「SAM 点选分割」；没选片段时这个入口不出现</span></figcaption><img data-rel="images/steps/sam-1.jpg" src="../images/steps/sam-1.jpg" alt="第 9 步　打开 SAM" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 10 步　选相机并点选</b><span>① 选择要分割的相机　② 等面板显示「SAM 就绪」后，在画面上点一下目标</span></figcaption><img data-rel="images/steps/sam-2.jpg" src="../images/steps/sam-2.jpg" alt="第 10 步　选相机并点选" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 11 步　确认轮廓并传播</b><span>出现蓝色轮廓和绿色圆点后点「传播跟踪」，按钮上显示进度，跑完提示「已生成目标框：N 帧轨迹」</span></figcaption><img data-rel="images/steps/sam-3.jpg" src="../images/steps/sam-3.jpg" alt="第 11 步　确认轮廓并传播" loading="lazy"></figure>
+<p>点错了可以继续加点修正：再点目标内部补正点，按住 <kbd>Shift</kbd> 点背景作为负点。确认无误后按 <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>S</kbd> 或点右上角「保存」，轮廓在后台落盘。</p>
+<div class="note">什么时候用手动画框：① SAM 服务没部署或加载失败；② 传播后个别帧框偏了，直接拖那个框修正；③ 目标太小、点不准。其余情况优先用 SAM，比手画快很多，也不会漏掉跟踪帧。</div>
+<div class="note tip"><b>建议：</b>只标关键物体（例如被拿取的那一个碗），比把所有物体都标上更省时间，程序质检也更容易通过。</div>
 <div class="note warn"><b>返回的框特别大：</b>没点中目标（把桌面、墙面当成了目标）。点「放弃对象」换个位置再点，或换到视野更完整的相机重试。</div>
+
+<h2 id="bbox">手动补画目标框（兜底）</h2>
+<p>SAM 服务不可用、目标太小点不准，或者传播后个别帧框偏了，才需要手动处理。</p>
+<figure class="step"><figcaption class="step-title"><b>第 12 步　手动画框或修正</b><span>在相机画面按住拖动即可画框，画好的框出现在右侧「目标框」列表里；已有的框也能直接拖动调整</span></figcaption><img data-rel="images/steps/bbox-1.jpg" src="../images/steps/bbox-1.jpg" alt="第 12 步　手动画框或修正" loading="lazy"></figure>
 
 <h2 id="submit">保存与提交</h2>
 <p>工作台有两个「保存」：面板右上角的「保存」只存当前 Episode，「保存修改」会先存当前 Episode，再把整个工作区写回任务版本。</p>
-<figure class="step"><figcaption class="step-title"><b>第 12 步　看顶部保存状态</b><span>① 「保存修改」　② 状态显示「未保存」，说明还有改动没写回</span></figcaption><img data-rel="images/steps/save-1.jpg" src="../images/steps/save-1.jpg" alt="第 12 步　看顶部保存状态" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 13 步　保存修改并等「已保存」</b><span>① 点「保存修改」　② 状态变成「已保存」才算写回任务版本</span></figcaption><img data-rel="images/steps/save-2.jpg" src="../images/steps/save-2.jpg" alt="第 13 步　保存修改并等「已保存」" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>需要时单独保存这一条</b><span>面板右上角的「保存」只存当前 Episode，没有改动时按钮是灰的</span></figcaption><img data-rel="images/steps/save-3.jpg" src="../images/steps/save-3.jpg" alt="需要时单独保存这一条" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 13 步　看顶部保存状态</b><span>① 「保存修改」　② 状态显示「未保存」，说明还有改动没写回</span></figcaption><img data-rel="images/steps/save-1.jpg" src="../images/steps/save-1.jpg" alt="第 13 步　看顶部保存状态" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 14 步　保存修改并等「已保存」</b><span>① 点「保存修改」　② 状态变成「已保存」才算写回任务版本</span></figcaption><img data-rel="images/steps/save-2.jpg" src="../images/steps/save-2.jpg" alt="第 14 步　保存修改并等「已保存」" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>随时　单独保存这一条</b><span>面板右上角的「保存」只存当前 Episode，没有改动时按钮是灰的</span></figcaption><img data-rel="images/steps/save-3.jpg" src="../images/steps/save-3.jpg" alt="随时　单独保存这一条" loading="lazy"></figure>
 <div class="note">面板「保存」没点也不会丢：「保存修改」会先替你存当前这条。但没保存就换 Episode、切数据集会被拦住，并提示「请先保存上一片段的标注」。只有关掉浏览器标签页才会弹「离开此网站？」。</div>
-<figure class="step"><figcaption class="step-title"><b>第 14 步　提交审核</b><span>回到任务详情页，在「人工标注」节点点「完成人工标注」</span></figcaption><img data-rel="images/steps/review-3.jpg" src="../images/steps/review-3.jpg" alt="第 14 步　提交审核" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 15 步　提交审核</b><span>回到任务详情页，在「人工标注」节点点「完成人工标注」</span></figcaption><img data-rel="images/steps/review-3.jpg" src="../images/steps/review-3.jpg" alt="第 15 步　提交审核" loading="lazy"></figure>
 <p>审核打回时任务退回「人工标注」，按打回原因改完点「修改后重新提交」。有未写回的改动时，「完成人工标注」是灰的。</p>
 
 <h2 id="checklist">提交前检查</h2>
@@ -77,7 +82,7 @@
 
     <nav class="pager"><a href="role-admin.html"><span class="k">上一页</span>管理员</a><a class="next" href="role-reviewer.html"><span class="k">下一页</span>审核员</a></nav>
   </main>
-  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#enter">进入工作区</a><a href="#segments">划片段</a><a href="#describe">写描述与画框</a><a href="#sam">SAM 辅助</a><a href="#submit">保存与提交</a><a href="#checklist">提交前检查</a></aside>
+  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#enter">进入工作区</a><a href="#segments">划片段</a><a href="#describe">写描述</a><a href="#sam">标注目标框（SAM）</a><a href="#bbox">手动补画（兜底）</a><a href="#submit">保存与提交</a><a href="#checklist">提交前检查</a></aside>
 </div>
 <footer>LabelVLA 文档</footer>
 <script>

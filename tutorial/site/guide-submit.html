@@ -20,14 +20,21 @@
     <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>5. 保存与提交</span></p>
     
 <h1>5. 保存与提交</h1>
-<p class="lead">标注分两层保存：右侧面板的「保存」只保存当前 Episode，顶部「保存修改」才把整个工作区写回任务版本。</p>
+<p class="lead">工作台里有两个「保存」，作用不同。不用每标一条就点两次：「保存修改」会先把当前这条 Episode 存掉，再一次性把整个工作区写回任务版本。</p>
+
+<h2 id="which">该点哪个保存</h2>
+<table>
+  <tr><th>按钮</th><th>位置</th><th>作用</th><th>要不要点</th></tr>
+  <tr><td>保存</td><td>标注面板右上角</td><td>只保存当前 Episode 的片段和目标框</td><td>可点可不点；不点也不会丢，「保存修改」会先替你存</td></tr>
+  <tr><td>保存修改</td><td>工作台顶部</td><td>先存当前 Episode，再生成任务版本（含裁剪后的视频和其他 Episode 的改动）</td><td>提交审核前必须点，要看到「已保存」</td></tr>
+</table>
+<div class="note">没点 Episode 的「保存」就去做别的，会被拦住并提示「请先保存上一片段的标注」「请先保存或处理未保存的标注」，换 Episode、切数据集都会这样；此时点「保存修改」或 <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>S</kbd> 就行，改动不会丢。只有关掉浏览器标签页时，才会弹「离开此网站？」的提醒。</div>
 
 <h2 id="save">保存与提交</h2>
 <figure class="step"><figcaption class="step-title"><b>第 1 步　看顶部的保存状态</b><span>① 「保存修改」把整个工作区写回版本　② 旁边的状态显示「未保存」，说明还有改动没写回</span></figcaption><img data-rel="images/steps/save-1.jpg" src="../images/steps/save-1.jpg" alt="第 1 步　看顶部的保存状态" loading="lazy"></figure>
 <figure class="step"><figcaption class="step-title"><b>第 2 步　点「保存修改」并等它变「已保存」</b><span>① 点「保存修改」　② 状态从「未保存」变成「已保存」后，改动才真正写回任务版本</span></figcaption><img data-rel="images/steps/save-2.jpg" src="../images/steps/save-2.jpg" alt="第 2 步　点「保存修改」并等它变「已保存」" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 3 步　保存当前这一条 Episode</b><span>标注面板右上角的「保存」只保存当前 Episode，其余 Episode 仍需回到顶部「保存修改」统一写回</span></figcaption><img data-rel="images/steps/save-3.jpg" src="../images/steps/save-3.jpg" alt="第 3 步　保存当前这一条 Episode" loading="lazy"></figure>
-<p>保存完成后回到任务详情页，在「人工标注」节点点「完成人工标注」（或在工作区逐条「通过」），任务流转到「人工验收」。</p>
-<div class="note">如果提示「请先在 Studio 点击保存修改」，说明还有改动没写回：回到工作区点顶部「保存修改」再提交。</div>
+<figure class="step"><figcaption class="step-title"><b>第 3 步　需要时单独保存当前这条</b><span>标注面板右上角的「保存」只保存当前 Episode，没有改动时按钮是灰色的</span></figcaption><img data-rel="images/steps/save-3.jpg" src="../images/steps/save-3.jpg" alt="第 3 步　需要时单独保存当前这条" loading="lazy"></figure>
+<p>保存完成后回到任务详情页，在「人工标注」节点点「完成人工标注」（或在工作区逐条「通过」），任务流转到「人工验收」。还有未写回的改动时，这个按钮是灰的，并提示「请先在工作区保存修改」。</p>
 
 <h2 id="files">文件位置</h2>
 <table>
@@ -39,7 +46,7 @@
 
     <nav class="pager"><a href="guide-sam.html"><span class="k">上一页</span>4. SAM 辅助分割</a><a class="next" href="guide-release.html"><span class="k">下一页</span>6. 审核与版本发布</a></nav>
   </main>
-  <aside class="toc-right"><p class="t">本页</p><a href="#save">保存与提交</a><a href="#files">文件位置</a></aside>
+  <aside class="toc-right"><p class="t">本页</p><a href="#which">该点哪个保存</a><a href="#save">保存与提交</a><a href="#files">文件位置</a></aside>
 </div>
 <footer>LabelVLA 文档</footer>
 <script>

@@ -15,19 +15,25 @@
   </div>
 </div>
 <div class="shell">
-  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">操作指南</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html" class='on'>角色与权限</a></li></ol></div></nav>
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">按角色</p><ol><li><a href="role-admin.html">管理员</a></li><li><a href="role-annotator.html">标注员</a></li><li><a href="role-reviewer.html">审核员</a></li></ol></div><div class="group"><p class="t">操作指南（完整流程）</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html" class='on'>角色与权限</a></li></ol></div></nav>
   <main>
     <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>角色与权限</span></p>
     
 <h1>角色与权限</h1>
-<p>管理员在「用户管理」里新建账号、调整角色、启用停用、绑定钉钉、查看登录记录。</p>
+<p>平台有三种角色，各自看得到的东西不一样。每个角色的具体操作在对应页面里：<a href="role-admin.html">管理员</a>、<a href="role-annotator.html">标注员</a>、<a href="role-reviewer.html">审核员</a>。</p>
 <table>
-  <tr><th>角色</th><th>权限</th></tr>
-  <tr><td>标注员</td><td>只能打开分配给自己的任务进行标注</td></tr>
-  <tr><td>审核员</td><td>审核分配给自己的任务，通过或打回</td></tr>
-  <tr><td>管理员</td><td>全部任务、数据集、用户与版本管理</td></tr>
+  <tr><th>角色</th><th>日常做什么</th><th>界面上能碰到的</th><th>做不了的</th></tr>
+  <tr><td>管理员</td><td>管账号、导数据、建任务、兜底处理</td><td>全部模块，可编辑也可验收任意任务</td><td>—</td></tr>
+  <tr><td>标注员</td><td>标注分配给自己的任务</td><td>数据看板、数据管理（只读）、任务、工作台（可编辑）</td><td>新建任务、审核通过/打回、账号与数据集管理</td></tr>
+  <tr><td>审核员</td><td>验收、建任务、编辑流程</td><td>任务、只读工作台、质检管理、版本管理</td><td>修改标注、账号管理、删除数据集</td></tr>
 </table>
-<p>任务创建时指定标注负责人和审核负责人；同一任务两人可以是同一账号，生产环境建议分开，便于记录责任人。</p>
+<h2>分配任务时的约束</h2>
+<table>
+  <tr><th>字段</th><th>只能选</th></tr>
+  <tr><td>标注负责人</td><td>标注员或管理员（给审核员会被拦下）</td></tr>
+  <tr><td>审核负责人</td><td>审核员或管理员</td></tr>
+</table>
+<p>同一个人可以既是标注负责人又是审核负责人，但生产环境建议分开，便于追溯责任。审核员点「质检通过 / 打回」只对自己负责的任务生效。</p>
 
     <nav class="pager"><a href="shortcuts.html"><span class="k">上一页</span>快捷键</a></nav>
   </main>

@@ -14,7 +14,24 @@
       ]
     },
     {
-      "title": "操作指南",
+      "title": "按角色",
+      "items": [
+        {
+          "file": "role-admin.html",
+          "label": "管理员"
+        },
+        {
+          "file": "role-annotator.html",
+          "label": "标注员"
+        },
+        {
+          "file": "role-reviewer.html",
+          "label": "审核员"
+        }
+      ]
+    },
+    {
+      "title": "操作指南（完整流程）",
       "items": [
         {
           "file": "guide-login.html",

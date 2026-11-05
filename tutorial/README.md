@@ -15,7 +15,9 @@
 操作指南每章是「一步一图」：每屏截图上方标「第 N 步」和一句说明，截图上用编号圆圈、框和箭头指出要点。
 截图由 `tools/capture_steps*.mjs` 截取并标注，输出到 `images/steps/`。
 
-导航分三组：开始（概览、流程演示）· 操作指南（第 1–6 章）· 参考（常见问题、快捷键、角色与权限）。
+导航分四组：开始（概览、流程演示）· 按角色（管理员、标注员、审核员）· 操作指南（第 1–6 章完整流程）· 参考（常见问题、快捷键、角色与权限）。
+
+按角色页只列该角色要用的操作：管理员管账号/数据/调度与接手；标注员是 8 步标注主线；审核员是等提交→查看→通过/打回。
 
 | 页 | 内容 |
 | --- | --- |
@@ -84,6 +86,7 @@ TASK_ID=<任务ID> node sam_stills.mjs
 TASK_ID=<任务ID> node capture_steps.mjs && TASK_ID=<任务ID> node capture_steps2.mjs
 TASK_ID=<任务ID> node capture_sam_clean.mjs   # 单独重截 SAM 点选那张（会先关掉轮廓预览）
 TASK_ID=<任务ID> node capture_save.mjs        # 单独重截「保存」三张（保存修改前/后、面板保存）
+node capture_roles.mjs                        # 按角色的截图：管理员看板/用户/数据集、审核员质检与任务
 # …… 任务流转到人工验收后再执行：
 TASK_ID=<任务ID> node capture_steps3.mjs && node capture_steps4.mjs
 

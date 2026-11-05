@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理员 · LabelVLA 文档</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a class="brand" href="index.html">LabelVLA 文档 <span>· 使用指南</span></a>
+    <a class="backlink" href="/" data-local="http://127.0.0.1:8002/">← 返回数据平台</a>
+    <span class="right">最后更新 2026-11-04</span>
+  </div>
+</div>
+<div class="shell">
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">按角色</p><ol><li><a href="role-admin.html" class='on'>管理员</a></li><li><a href="role-annotator.html">标注员</a></li><li><a href="role-reviewer.html">审核员</a></li></ol></div><div class="group"><p class="t">操作指南（完整流程）</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <main>
+    <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>管理员</span></p>
+    
+<h1>管理员</h1>
+<p class="lead">管理员负责账号、数据集和任务调度，也可以直接打开任何任务做标注或审核。日常需要会的不多，但「谁用哪个账号」决定了流程能不能走完。</p>
+
+<h2 id="can">能做什么</h2>
+<table>
+  <tr><th>模块</th><th>管理员能做的事</th><th>谁来用</th></tr>
+  <tr><td>数据管理</td><td>查看全部数据集、重新扫描、移入回收站与恢复、改机器人标签</td><td>管理员</td></tr>
+  <tr><td>用户管理</td><td>新建账号、改角色、停用/删除、绑定钉钉、查看登录记录<sup>①</sup></td><td>管理员</td></tr>
+  <tr><td>任务管理</td><td>新建任务、取消、重试、编辑流程、转回节点、强制流转</td><td>管理员、审核员（部分）</td></tr>
+  <tr><td>标注 / 审核</td><td>打开任意任务的工作区，可编辑也可验收</td><td>管理员</td></tr>
+</table>
+<p class="lead"><sup>①</sup> 界面目前能新建账号和改角色；改密码、重置密码走接口或数据库，文档里不展开。</p>
+
+<h2 id="daily">日常操作</h2>
+<figure class="step"><figcaption class="step-title"><b>第 1 步　看进度</b><span>数据看板显示数据集与标注总量、标注状态分布、质检通过率、近期趋势</span></figcaption><img data-rel="images/steps/admin-1.jpg" src="../images/steps/admin-1.jpg" alt="第 1 步　看进度" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 2 步　管账号</b><span>用户管理里新建账号、改角色；① 新建账号　② 修改角色</span></figcaption><img data-rel="images/steps/admin-2.jpg" src="../images/steps/admin-2.jpg" alt="第 2 步　管账号" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 3 步　导入数据</b><span>数据集放进 <code>data/</code> 后点右上角「重新扫描」；不需要的数据可以移到回收站</span></figcaption><img data-rel="images/steps/admin-3.jpg" src="../images/steps/admin-3.jpg" alt="第 3 步　导入数据" loading="lazy"></figure>
+<p>把第 2 章的任务交给某个人时，注意：<b>标注负责人必须是标注员（或管理员）</b>，审核负责人只能从<b>管理员和审核员</b>里选。给标注员分配审核、或把审核负责人留给标注员，流程会走不通。</p>
+
+<h2 id="handover">接手别人的任务</h2>
+<table>
+  <tr><th>情况</th><th>做法</th></tr>
+  <tr><td>标注人请假，任务停在「人工标注」</td><td>管理员直接进工作区改，完成后点「完成人工标注」</td></tr>
+  <tr><td>程序质检不通过、任务失败</td><td>任务详情页点「返回标注修正」（或「转回节点」），补完再提交</td></tr>
+  <tr><td>流程节点配错了</td><td>「编辑流程」调整后续节点，需要时用「强制流转」并填原因，操作会记入执行事件</td></tr>
+</table>
+
+<h2 id="chapters">对应章节</h2>
+<p>建任务看 <a href="guide-task.html">2. 新建标注任务</a>；需要时按 <a href="guide-studio.html">3~5 章</a> 自己标一遍；审核和发布看 <a href="guide-release.html">6. 审核与版本发布</a>。角色权限对照表在 <a href="roles.html">角色与权限</a>。</p>
+
+    <nav class="pager"><a href="demo.html"><span class="k">上一页</span>流程演示</a><a class="next" href="role-annotator.html"><span class="k">下一页</span>标注员</a></nav>
+  </main>
+  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#daily">日常操作</a><a href="#handover">接手别人的任务</a><a href="#chapters">对应章节</a></aside>
+</div>
+<footer>LabelVLA 文档</footer>
+<script>
+  // 图片：平台内以 /help/ 提供时用 /help/images/…，本地双击打开时用 ../images/…
+  (function () {
+    var prefix = location.pathname.startsWith('/help/') ? '/help/' : '../';
+    document.querySelectorAll('img[data-rel]').forEach(function (i) { i.src = prefix + i.getAttribute('data-rel'); });
+  })();
+  // 本地双击打开时，「返回数据平台」指向默认平台地址
+  (function () {
+    if (location.protocol === 'file:') {
+      document.querySelectorAll('a[data-local]').forEach(function (a) { a.href = a.getAttribute('data-local'); });
+    }
+  })();
+  // 平台内以 /help/ 提供时，站内相对链接与样式路径统一补前缀；本地双击打开则保持相对路径
+  (function () {
+    if (!location.pathname.startsWith('/help/')) return;
+    var map = { '': '/help/index.html', 'index.html': '/help/index.html' };
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (!h || h.startsWith('/') || h.startsWith('#') || h.startsWith('data:') || h.startsWith('http')) return;
+      a.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('link[rel=stylesheet]').forEach(function (l) {
+      var h = l.getAttribute('href');
+      if (h && !h.startsWith('/')) l.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('img[data-rel]').forEach(function (i) {
+      var h = i.getAttribute('data-rel');
+      i.src = location.pathname.startsWith('/help/') ? '/help/' + h : h;
+    });
+  })();
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-right a'));
+    if (!links.length) return;
+    var targets = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    function update() {
+      var y = window.scrollY + 120, current = null;
+      targets.forEach(function (t) { if (t.offsetTop <= y) current = t.id; });
+      links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + current); });
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+</script>
+</body>
+</html>

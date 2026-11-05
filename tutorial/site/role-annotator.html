@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>标注员 · LabelVLA 文档</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a class="brand" href="index.html">LabelVLA 文档 <span>· 使用指南</span></a>
+    <a class="backlink" href="/" data-local="http://127.0.0.1:8002/">← 返回数据平台</a>
+    <span class="right">最后更新 2026-11-04</span>
+  </div>
+</div>
+<div class="shell">
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">按角色</p><ol><li><a href="role-admin.html">管理员</a></li><li><a href="role-annotator.html" class='on'>标注员</a></li><li><a href="role-reviewer.html">审核员</a></li></ol></div><div class="group"><p class="t">操作指南（完整流程）</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <main>
+    <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>标注员</span></p>
+    
+<h1>标注员</h1>
+<p class="lead">标注员只做一件事：把分配给自己的任务标完、保存、提交审核。看不到别人的任务，也不需要碰数据集和账号。</p>
+
+<h2 id="can">能做什么</h2>
+<table>
+  <tr><th>能做</th><th>不能做</th></tr>
+  <tr><td>打开分配给自己的任务、进入工作区标注</td><td>新建任务、分配负责人</td></tr>
+  <tr><td>划片段、写描述、画目标框、用 SAM 辅助</td><td>审核通过、打回、发布版本</td></tr>
+  <tr><td>单条 Episode 点「通过」「数据不可用，跳过标注」并填原因</td><td>修改数据集、管理账号、编辑流程</td></tr>
+  <tr><td>保存工作区、提交审核、被退回后修改重提</td><td>改别人负责的任务</td></tr>
+</table>
+
+<h2 id="flow">每天的工作流</h2>
+<figure class="step"><figcaption class="step-title"><b>第 1 步　登录</b><span>用管理员给你的账号登录，第一次登录要先改密码</span></figcaption><img data-rel="images/steps/login-1.jpg" src="../images/steps/login-1.jpg" alt="第 1 步　登录" loading="lazy"></figure>
+<p>登录后在「任务管理」里找分配给自己的任务，点进任务详情。</p>
+<figure class="step"><figcaption class="step-title"><b>第 2 步　进入工作区</b><span>在「人工标注」节点点「进入工作区」</span></figcaption><img data-rel="images/steps/task-detail-1.jpg" src="../images/steps/task-detail-1.jpg" alt="第 2 步　进入工作区" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 3 步　开始标注</b><span>点「开始标注」，再点左侧「编辑」</span></figcaption><img data-rel="images/steps/studio-1.jpg" src="../images/steps/studio-1.jpg" alt="第 3 步　开始标注" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 4 步　划片段并命名</b><span>斜纹区点一下新建片段，填名字后保存</span></figcaption><img data-rel="images/steps/segment-2.jpg" src="../images/steps/segment-2.jpg" alt="第 4 步　划片段并命名" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 5 步　写描述</b><span>选中片段，填技能 / 对象 / 目标</span></figcaption><img data-rel="images/steps/describe-1.jpg" src="../images/steps/describe-1.jpg" alt="第 5 步　写描述" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 6 步　画目标框</b><span>在相机画面拖动画框</span></figcaption><img data-rel="images/steps/bbox-1.jpg" src="../images/steps/bbox-1.jpg" alt="第 6 步　画目标框" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 7 步　保存修改</b><span>顶部「保存修改」，等状态变成「已保存」</span></figcaption><img data-rel="images/steps/save-2.jpg" src="../images/steps/save-2.jpg" alt="第 7 步　保存修改" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 8 步　提交审核</b><span>回到任务详情，点「完成人工标注」</span></figcaption><img data-rel="images/steps/review-3.jpg" src="../images/steps/review-3.jpg" alt="第 8 步　提交审核" loading="lazy"></figure>
+<p>审核打回时，任务会退回到「人工标注」，按打回原因修改后用「修改后重新提交」再次提交。难标的物体可以用 <a href="guide-sam.html">SAM 辅助分割</a> 省时间。</p>
+
+<h2 id="checklist">提交前检查</h2>
+<table>
+  <tr><th>检查项</th><th>怎么确认</th></tr>
+  <tr><td>每条 Episode 都标了，或填了跳过原因</td><td>左侧 Episode 列表的状态标记；没标的会让程序质检失败</td></tr>
+  <tr><td>片段边界对得上动作</td><td>播放一遍，确认起止帧</td></tr>
+  <tr><td>描述和目标框都有</td><td>逐个片段选中检查右侧面板</td></tr>
+  <tr><td>顶部显示「已保存」</td><td>没保存时「完成人工标注」是灰的</td></tr>
+</table>
+
+    <nav class="pager"><a href="role-admin.html"><span class="k">上一页</span>管理员</a><a class="next" href="role-reviewer.html"><span class="k">下一页</span>审核员</a></nav>
+  </main>
+  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#flow">每天的工作流</a><a href="#checklist">提交前检查</a></aside>
+</div>
+<footer>LabelVLA 文档</footer>
+<script>
+  // 图片：平台内以 /help/ 提供时用 /help/images/…，本地双击打开时用 ../images/…
+  (function () {
+    var prefix = location.pathname.startsWith('/help/') ? '/help/' : '../';
+    document.querySelectorAll('img[data-rel]').forEach(function (i) { i.src = prefix + i.getAttribute('data-rel'); });
+  })();
+  // 本地双击打开时，「返回数据平台」指向默认平台地址
+  (function () {
+    if (location.protocol === 'file:') {
+      document.querySelectorAll('a[data-local]').forEach(function (a) { a.href = a.getAttribute('data-local'); });
+    }
+  })();
+  // 平台内以 /help/ 提供时，站内相对链接与样式路径统一补前缀；本地双击打开则保持相对路径
+  (function () {
+    if (!location.pathname.startsWith('/help/')) return;
+    var map = { '': '/help/index.html', 'index.html': '/help/index.html' };
+    document.querySelectorAll('a[href]').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (!h || h.startsWith('/') || h.startsWith('#') || h.startsWith('data:') || h.startsWith('http')) return;
+      a.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('link[rel=stylesheet]').forEach(function (l) {
+      var h = l.getAttribute('href');
+      if (h && !h.startsWith('/')) l.setAttribute('href', '/help/' + h);
+    });
+    document.querySelectorAll('img[data-rel]').forEach(function (i) {
+      var h = i.getAttribute('data-rel');
+      i.src = location.pathname.startsWith('/help/') ? '/help/' + h : h;
+    });
+  })();
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-right a'));
+    if (!links.length) return;
+    var targets = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+    function update() {
+      var y = window.scrollY + 120, current = null;
+      targets.forEach(function (t) { if (t.offsetTop <= y) current = t.id; });
+      links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + current); });
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+</script>
+</body>
+</html>

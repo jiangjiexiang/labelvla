@@ -15,12 +15,12 @@
   </div>
 </div>
 <div class="shell">
-  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">按角色</p><ol><li><a href="role-admin.html">管理员</a></li><li><a href="role-annotator.html" class='on'>标注员</a></li><li><a href="role-reviewer.html">审核员</a></li></ol></div><div class="group"><p class="t">操作指南（完整流程）</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">按角色</p><ol><li><a href="role-admin.html">管理员</a></li><li><a href="role-annotator.html" class='on'>标注员</a></li><li><a href="role-reviewer.html">审核员</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li></ol></div></nav>
   <main>
     <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>标注员</span></p>
     
 <h1>标注员</h1>
-<p class="lead">标注员只做一件事：把分配给自己的任务标完、保存、提交审核。看不到别人的任务，也不需要碰数据集和账号。</p>
+<p class="lead">标注员只做一件事：把分配给自己的任务标完、保存、提交。看不到别人的任务，也不用管数据集和账号。</p>
 
 <h2 id="can">能做什么</h2>
 <table>
@@ -31,30 +31,53 @@
   <tr><td>保存工作区、提交审核、被退回后修改重提</td><td>改别人负责的任务</td></tr>
 </table>
 
-<h2 id="flow">每天的工作流</h2>
+<h2 id="enter">进入工作区</h2>
 <figure class="step"><figcaption class="step-title"><b>第 1 步　登录</b><span>用管理员给你的账号登录，第一次登录要先改密码</span></figcaption><img data-rel="images/steps/login-1.jpg" src="../images/steps/login-1.jpg" alt="第 1 步　登录" loading="lazy"></figure>
 <p>登录后在「任务管理」里找分配给自己的任务，点进任务详情。</p>
 <figure class="step"><figcaption class="step-title"><b>第 2 步　进入工作区</b><span>在「人工标注」节点点「进入工作区」</span></figcaption><img data-rel="images/steps/task-detail-1.jpg" src="../images/steps/task-detail-1.jpg" alt="第 2 步　进入工作区" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 3 步　开始标注</b><span>点「开始标注」，再点左侧「编辑」</span></figcaption><img data-rel="images/steps/studio-1.jpg" src="../images/steps/studio-1.jpg" alt="第 3 步　开始标注" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 4 步　划片段并命名</b><span>斜纹区点一下新建片段，填名字后保存</span></figcaption><img data-rel="images/steps/segment-2.jpg" src="../images/steps/segment-2.jpg" alt="第 4 步　划片段并命名" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 5 步　写描述</b><span>选中片段，填技能 / 对象 / 目标</span></figcaption><img data-rel="images/steps/describe-1.jpg" src="../images/steps/describe-1.jpg" alt="第 5 步　写描述" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 6 步　画目标框</b><span>在相机画面拖动画框</span></figcaption><img data-rel="images/steps/bbox-1.jpg" src="../images/steps/bbox-1.jpg" alt="第 6 步　画目标框" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 7 步　保存修改</b><span>顶部「保存修改」，等状态变成「已保存」</span></figcaption><img data-rel="images/steps/save-2.jpg" src="../images/steps/save-2.jpg" alt="第 7 步　保存修改" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 8 步　提交审核</b><span>回到任务详情，点「完成人工标注」</span></figcaption><img data-rel="images/steps/review-3.jpg" src="../images/steps/review-3.jpg" alt="第 8 步　提交审核" loading="lazy"></figure>
-<p>审核打回时，任务会退回到「人工标注」，按打回原因修改后用「修改后重新提交」再次提交。难标的物体可以用 <a href="guide-sam.html">SAM 辅助分割</a> 省时间。</p>
+<figure class="step"><figcaption class="step-title"><b>第 3 步　开始标注</b><span>点「开始标注」，再点左侧「编辑」，下方片段轨道才能改</span></figcaption><img data-rel="images/steps/studio-1.jpg" src="../images/steps/studio-1.jpg" alt="第 3 步　开始标注" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>认识界面</b><span>① Episode 列表　② 相机画面　③ 曲线与原始数据　④ 时间轴 / 片段轨道　⑤ 标注面板</span></figcaption><img data-rel="images/steps/studio-2.jpg" src="../images/steps/studio-2.jpg" alt="认识界面" loading="lazy"></figure>
+
+<h2 id="segments">划片段</h2>
+<figure class="step"><figcaption class="step-title"><b>第 4 步　新建片段</b><span>在轨道斜纹区点一下，弹出「子任务」对话框</span></figcaption><img data-rel="images/steps/segment-1.jpg" src="../images/steps/segment-1.jpg" alt="第 4 步　新建片段" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 5 步　给片段起名字</b><span>① 输入片段名，例如「抓取食物」　② 点「保存」</span></figcaption><img data-rel="images/steps/segment-2.jpg" src="../images/steps/segment-2.jpg" alt="第 5 步　给片段起名字" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 6 步　拖边界对齐动作</b><span>鼠标移到片段边缘出现把手，左右拖动调整起止帧；剩下的斜纹区再点一下，给下一段命名</span></figcaption><img data-rel="images/steps/segment-3.jpg" src="../images/steps/segment-3.jpg" alt="第 6 步　拖边界对齐动作" loading="lazy"></figure>
+<div class="note warn"><b>注意：</b>界面底部提示的 <kbd>Q</kbd> / <kbd>R</kbd> / <kbd>Enter</kbd> 快捷键在当前版本没生效，用鼠标点轨道和拖拽边界即可。</div>
+
+<h2 id="describe">写描述与画框</h2>
+<figure class="step"><figcaption class="step-title"><b>第 7 步　填结构化描述</b><span>① 点轨道上的片段选中　② 技能　③ 对象　④ 目标；可下拉选择，也可输入新词后回车</span></figcaption><img data-rel="images/steps/describe-1.jpg" src="../images/steps/describe-1.jpg" alt="第 7 步　填结构化描述" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>填完自动成句</b><span>四个字段合成一句描述，显示在面板「当前 Subtask 片段」下方</span></figcaption><img data-rel="images/steps/describe-2.jpg" src="../images/steps/describe-2.jpg" alt="填完自动成句" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 8 步　画目标框</b><span>在任一相机画面按住拖动即可画框，画好的框出现在右侧「目标框」列表里</span></figcaption><img data-rel="images/steps/bbox-1.jpg" src="../images/steps/bbox-1.jpg" alt="第 8 步　画目标框" loading="lazy"></figure>
+<div class="note tip"><b>建议：</b>只标关键物体（例如被拿取的那一个碗），比把所有物体都标上更省时间，程序质检也更容易通过。</div>
+
+<h2 id="sam">SAM 辅助（可选）</h2>
+<p>物体形状不规则、手画框慢的时候，用 SAM 点一下自动分割并跟踪整段视频。</p>
+<figure class="step"><figcaption class="step-title"><b>第 9 步　打开 SAM</b><span>先在轨道上选中片段，面板底部才会出现「SAM 点选分割」</span></figcaption><img data-rel="images/steps/sam-1.jpg" src="../images/steps/sam-1.jpg" alt="第 9 步　打开 SAM" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 10 步　选相机并点选</b><span>① 选择相机　② 等显示「SAM 就绪」后，在画面上点一下目标</span></figcaption><img data-rel="images/steps/sam-2.jpg" src="../images/steps/sam-2.jpg" alt="第 10 步　选相机并点选" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 11 步　确认轮廓并传播</b><span>出现蓝色轮廓和绿色圆点后，点「传播跟踪」，跑完提示「已生成目标框：N 帧轨迹」</span></figcaption><img data-rel="images/steps/sam-3.jpg" src="../images/steps/sam-3.jpg" alt="第 11 步　确认轮廓并传播" loading="lazy"></figure>
+<div class="note warn"><b>返回的框特别大：</b>没点中目标（把桌面、墙面当成了目标）。点「放弃对象」换个位置再点，或换到视野更完整的相机重试。</div>
+
+<h2 id="submit">保存与提交</h2>
+<p>工作台有两个「保存」：面板右上角的「保存」只存当前 Episode，「保存修改」会先存当前 Episode，再把整个工作区写回任务版本。</p>
+<figure class="step"><figcaption class="step-title"><b>第 12 步　看顶部保存状态</b><span>① 「保存修改」　② 状态显示「未保存」，说明还有改动没写回</span></figcaption><img data-rel="images/steps/save-1.jpg" src="../images/steps/save-1.jpg" alt="第 12 步　看顶部保存状态" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 13 步　保存修改并等「已保存」</b><span>① 点「保存修改」　② 状态变成「已保存」才算写回任务版本</span></figcaption><img data-rel="images/steps/save-2.jpg" src="../images/steps/save-2.jpg" alt="第 13 步　保存修改并等「已保存」" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>需要时单独保存这一条</b><span>面板右上角的「保存」只存当前 Episode，没有改动时按钮是灰的</span></figcaption><img data-rel="images/steps/save-3.jpg" src="../images/steps/save-3.jpg" alt="需要时单独保存这一条" loading="lazy"></figure>
+<div class="note">面板「保存」没点也不会丢：「保存修改」会先替你存当前这条。但没保存就换 Episode、切数据集会被拦住，并提示「请先保存上一片段的标注」。只有关掉浏览器标签页才会弹「离开此网站？」。</div>
+<figure class="step"><figcaption class="step-title"><b>第 14 步　提交审核</b><span>回到任务详情页，在「人工标注」节点点「完成人工标注」</span></figcaption><img data-rel="images/steps/review-3.jpg" src="../images/steps/review-3.jpg" alt="第 14 步　提交审核" loading="lazy"></figure>
+<p>审核打回时任务退回「人工标注」，按打回原因改完点「修改后重新提交」。有未写回的改动时，「完成人工标注」是灰的。</p>
 
 <h2 id="checklist">提交前检查</h2>
 <table>
   <tr><th>检查项</th><th>怎么确认</th></tr>
-  <tr><td>每条 Episode 都标了，或填了跳过原因</td><td>左侧 Episode 列表的状态标记；没标的会让程序质检失败</td></tr>
+  <tr><td>每条 Episode 都标了，或填了跳过原因</td><td>看左侧 Episode 列表的状态标记；没标的会让程序质检失败</td></tr>
   <tr><td>片段边界对得上动作</td><td>播放一遍，确认起止帧</td></tr>
-  <tr><td>描述和目标框都有</td><td>逐个片段选中检查右侧面板</td></tr>
+  <tr><td>描述和目标框都有</td><td>逐个片段选中，检查右侧面板</td></tr>
   <tr><td>顶部显示「已保存」</td><td>没保存时「完成人工标注」是灰的</td></tr>
 </table>
 
     <nav class="pager"><a href="role-admin.html"><span class="k">上一页</span>管理员</a><a class="next" href="role-reviewer.html"><span class="k">下一页</span>审核员</a></nav>
   </main>
-  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#flow">每天的工作流</a><a href="#checklist">提交前检查</a></aside>
+  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#enter">进入工作区</a><a href="#segments">划片段</a><a href="#describe">写描述与画框</a><a href="#sam">SAM 辅助</a><a href="#submit">保存与提交</a><a href="#checklist">提交前检查</a></aside>
 </div>
 <footer>LabelVLA 文档</footer>
 <script>

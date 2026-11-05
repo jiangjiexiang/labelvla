@@ -15,43 +15,63 @@
   </div>
 </div>
 <div class="shell">
-  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">按角色</p><ol><li><a href="role-admin.html" class='on'>管理员</a></li><li><a href="role-annotator.html">标注员</a></li><li><a href="role-reviewer.html">审核员</a></li></ol></div><div class="group"><p class="t">操作指南（完整流程）</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">按角色</p><ol><li><a href="role-admin.html" class='on'>管理员</a></li><li><a href="role-annotator.html">标注员</a></li><li><a href="role-reviewer.html">审核员</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li></ol></div></nav>
   <main>
     <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>管理员</span></p>
     
 <h1>管理员</h1>
-<p class="lead">管理员负责账号、数据集和任务调度，也可以直接打开任何任务做标注或审核。日常需要会的不多，但「谁用哪个账号」决定了流程能不能走完。</p>
+<p class="lead">管理员的日常是管账号、导数据、建任务，以及在流程卡住时兜底。标注和审核也可以自己做。本页按这四个部分给出完整操作，每一步都配图。</p>
+<p class="lead">登录账号 <code>admin</code> / <code>admin123</code>（新部署未改过密码时为 <code>admin</code>）。</p>
 
 <h2 id="can">能做什么</h2>
 <table>
-  <tr><th>模块</th><th>管理员能做的事</th><th>谁来用</th></tr>
-  <tr><td>数据管理</td><td>查看全部数据集、重新扫描、移入回收站与恢复、改机器人标签</td><td>管理员</td></tr>
-  <tr><td>用户管理</td><td>新建账号、改角色、停用/删除、绑定钉钉、查看登录记录<sup>①</sup></td><td>管理员</td></tr>
-  <tr><td>任务管理</td><td>新建任务、取消、重试、编辑流程、转回节点、强制流转</td><td>管理员、审核员（部分）</td></tr>
-  <tr><td>标注 / 审核</td><td>打开任意任务的工作区，可编辑也可验收</td><td>管理员</td></tr>
+  <tr><th>模块</th><th>能做的事</th></tr>
+  <tr><td>数据管理</td><td>查看全部数据集、重新扫描、移入回收站与恢复、改机器人标签</td></tr>
+  <tr><td>用户管理</td><td>新建账号、改角色、停用/删除、绑定钉钉、查看登录记录<sup>①</sup></td></tr>
+  <tr><td>任务管理</td><td>新建任务、取消、重试、编辑流程、转回节点、强制流转</td></tr>
+  <tr><td>标注 / 审核</td><td>打开任意任务的工作区，可编辑也可验收</td></tr>
 </table>
-<p class="lead"><sup>①</sup> 界面目前能新建账号和改角色；改密码、重置密码走接口或数据库，文档里不展开。</p>
+<p><sup>①</sup> 界面目前提供新建账号和改角色；改密码、重置密码走接口或数据库，本页不展开。</p>
 
-<h2 id="daily">日常操作</h2>
-<figure class="step"><figcaption class="step-title"><b>第 1 步　看进度</b><span>数据看板显示数据集与标注总量、标注状态分布、质检通过率、近期趋势</span></figcaption><img data-rel="images/steps/admin-1.jpg" src="../images/steps/admin-1.jpg" alt="第 1 步　看进度" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 2 步　管账号</b><span>用户管理里新建账号、改角色；① 新建账号　② 修改角色</span></figcaption><img data-rel="images/steps/admin-2.jpg" src="../images/steps/admin-2.jpg" alt="第 2 步　管账号" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 3 步　导入数据</b><span>数据集放进 <code>data/</code> 后点右上角「重新扫描」；不需要的数据可以移到回收站</span></figcaption><img data-rel="images/steps/admin-3.jpg" src="../images/steps/admin-3.jpg" alt="第 3 步　导入数据" loading="lazy"></figure>
-<p>把第 2 章的任务交给某个人时，注意：<b>标注负责人必须是标注员（或管理员）</b>，审核负责人只能从<b>管理员和审核员</b>里选。给标注员分配审核、或把审核负责人留给标注员，流程会走不通。</p>
+<h2 id="accounts">管账号</h2>
+<figure class="step"><figcaption class="step-title"><b>第 1 步　登录</b><span>① 用户名　② 密码　③ 点「登录」；首次登录会要求改密码</span></figcaption><img data-rel="images/steps/login-1.jpg" src="../images/steps/login-1.jpg" alt="第 1 步　登录" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 2 步　看整体进度</b><span>数据看板：数据集与标注总量、标注状态分布、质检通过率、近期趋势</span></figcaption><img data-rel="images/steps/admin-1.jpg" src="../images/steps/admin-1.jpg" alt="第 2 步　看整体进度" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 3 步　新建账号和分配角色</b><span>用户管理里：① 新建账号（填初始密码，至少 6 位）　② 修改已有账号的角色</span></figcaption><img data-rel="images/steps/admin-2.jpg" src="../images/steps/admin-2.jpg" alt="第 3 步　新建账号和分配角色" loading="lazy"></figure>
+<div class="note">别用管理员账号给团队分工。管理员能开任意任务，出问题时分不清责任：给标注的人开标注员账号，给验收的人开审核员账号。</div>
+
+<h2 id="data">导数据</h2>
+<figure class="step"><figcaption class="step-title"><b>第 4 步　把数据集放进平台</b><span>数据集放进 <code>data/</code> 后点右上角「重新扫描」；暂时不用的可以移到回收站，之后能恢复</span></figcaption><img data-rel="images/steps/admin-3.jpg" src="../images/steps/admin-3.jpg" alt="第 4 步　把数据集放进平台" loading="lazy"></figure>
+<p>数据集需要符合 LeRobot v2.x / v3.0 目录结构。扫描完成后，列表里能看到条数、时长、相机数和标注进度。</p>
+<figure class="step"><figcaption class="step-title"><b>第 5 步　确认数据可用</b><span>① 找到刚导入的数据集，名称后面的标签是机器人来源　② 点名称进入 Episode 列表，检查时长和标注状态</span></figcaption><img data-rel="images/steps/datasets-1.jpg" src="../images/steps/datasets-1.jpg" alt="第 5 步　确认数据可用" loading="lazy"></figure>
+
+<h2 id="task">建任务</h2>
+<figure class="step"><figcaption class="step-title"><b>第 6 步　填任务表单</b><span>① 任务名称　② 关联数据集　③ 标注负责人　④ 审核负责人</span></figcaption><img data-rel="images/steps/task-create-1.jpg" src="../images/steps/task-create-1.jpg" alt="第 6 步　填任务表单" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 7 步　确认后创建</b><span>四项都填好，在页面底部点「创建任务」</span></figcaption><img data-rel="images/steps/task-create-2.jpg" src="../images/steps/task-create-2.jpg" alt="第 7 步　确认后创建" loading="lazy"></figure>
+<table>
+  <tr><th>字段</th><th>只能选</th></tr>
+  <tr><td>标注负责人</td><td>标注员或管理员（选审核员会被拦下）</td></tr>
+  <tr><td>审核负责人</td><td>审核员或管理员</td></tr>
+</table>
+<div class="note">要接着已有版本改，在「起始版本」里选对应版本；否则从原始数据开始。创建后任务自动跑完「预处理」，停在「人工标注」等人。</div>
 
 <h2 id="handover">接手别人的任务</h2>
+<figure class="step"><figcaption class="step-title"><b>情况一　标注人不在</b><span>直接点「进入工作区」替他把标注做完，再点「完成人工标注」</span></figcaption><img data-rel="images/steps/task-detail-1.jpg" src="../images/steps/task-detail-1.jpg" alt="情况一　标注人不在" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>情况二　审核人不在</b><span>任务进入「人工验收」后，管理员也能点「质检通过」或「打回重标」</span></figcaption><img data-rel="images/steps/review-1.jpg" src="../images/steps/review-1.jpg" alt="情况二　审核人不在" loading="lazy"></figure>
 <table>
   <tr><th>情况</th><th>做法</th></tr>
-  <tr><td>标注人请假，任务停在「人工标注」</td><td>管理员直接进工作区改，完成后点「完成人工标注」</td></tr>
   <tr><td>程序质检不通过、任务失败</td><td>任务详情页点「返回标注修正」（或「转回节点」），补完再提交</td></tr>
-  <tr><td>流程节点配错了</td><td>「编辑流程」调整后续节点，需要时用「强制流转」并填原因，操作会记入执行事件</td></tr>
+  <tr><td>流程节点配错了</td><td>「编辑流程」调整后续节点；必要时「强制流转」，需填写原因，会记入执行事件</td></tr>
+  <tr><td>任务不用了</td><td>「取消任务」，工作区副本随之作废，原始数据不受影响</td></tr>
 </table>
 
-<h2 id="chapters">对应章节</h2>
-<p>建任务看 <a href="guide-task.html">2. 新建标注任务</a>；需要时按 <a href="guide-studio.html">3~5 章</a> 自己标一遍；审核和发布看 <a href="guide-release.html">6. 审核与版本发布</a>。角色权限对照表在 <a href="roles.html">角色与权限</a>。</p>
+<h2 id="result">查看与发布结果</h2>
+<figure class="step"><figcaption class="step-title"><b>完成后</b><span>任务状态变成「已完成」，五个节点全部通过</span></figcaption><img data-rel="images/steps/release-1.jpg" src="../images/steps/release-1.jpg" alt="完成后" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>在「版本管理」找产物</b><span>① ② 每次发布都是独立版本，有校验摘要和完整数据包，旧版本不会被覆盖</span></figcaption><img data-rel="images/steps/versions-1.jpg" src="../images/steps/versions-1.jpg" alt="在「版本管理」找产物" loading="lazy"></figure>
+<p>要自己标一遍的完整操作（划片段、写描述、SAM 辅助、保存）见<a href="role-annotator.html">标注员</a>页。</p>
 
     <nav class="pager"><a href="demo.html"><span class="k">上一页</span>流程演示</a><a class="next" href="role-annotator.html"><span class="k">下一页</span>标注员</a></nav>
   </main>
-  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#daily">日常操作</a><a href="#handover">接手别人的任务</a><a href="#chapters">对应章节</a></aside>
+  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#accounts">管账号</a><a href="#data">导数据</a><a href="#task">建任务</a><a href="#handover">接手别人的任务</a><a href="#result">查看与发布结果</a></aside>
 </div>
 <footer>LabelVLA 文档</footer>
 <script>

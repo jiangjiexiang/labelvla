@@ -15,12 +15,12 @@
   </div>
 </div>
 <div class="shell">
-  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">按角色</p><ol><li><a href="role-admin.html">管理员</a></li><li><a href="role-annotator.html">标注员</a></li><li><a href="role-reviewer.html" class='on'>审核员</a></li></ol></div><div class="group"><p class="t">操作指南（完整流程）</p><ol><li><a href="guide-login.html">1. 登录与数据管理</a></li><li><a href="guide-task.html">2. 新建标注任务</a></li><li><a href="guide-studio.html">3. 标注工作台</a></li><li><a href="guide-sam.html">4. SAM 辅助分割</a></li><li><a href="guide-submit.html">5. 保存与提交</a></li><li><a href="guide-release.html">6. 审核与版本发布</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li><li><a href="roles.html">角色与权限</a></li></ol></div></nav>
+  <nav class="sidebar"><div class="group"><p class="t">开始</p><ol><li><a href="index.html">概览</a></li><li><a href="demo.html">流程演示</a></li></ol></div><div class="group"><p class="t">按角色</p><ol><li><a href="role-admin.html">管理员</a></li><li><a href="role-annotator.html">标注员</a></li><li><a href="role-reviewer.html" class='on'>审核员</a></li></ol></div><div class="group"><p class="t">参考</p><ol><li><a href="faq.html">常见问题</a></li><li><a href="shortcuts.html">快捷键</a></li></ol></div></nav>
   <main>
     <p class="crumbs"><a href="index.html">文档</a> / <a href="index.html">概览</a> / <span>审核员</span></p>
     
 <h1>审核员</h1>
-<p class="lead">审核员负责验收：看视频、检查片段和目标框，通过或打回。工作台对审核员是只读的，改不了标注。</p>
+<p class="lead">审核员有两种活：给标注员建任务，以及验收标注结果。工作台对审核员是只读的，你只能看和判定，不能改标注。</p>
 
 <h2 id="can">能做什么</h2>
 <table>
@@ -28,19 +28,25 @@
   <tr><td>新建任务、指定标注负责人和审核负责人</td><td>修改标注（工作台只读）</td></tr>
   <tr><td>「查看视频质检」进入只读工作区逐条看</td><td>管理账号、删除数据集</td></tr>
   <tr><td>对分配给自己的任务点「质检通过」或「打回重标」</td><td>替别人做审核确认</td></tr>
-  <tr><td>编辑流程、返回标注修正</td><td>—</td></tr>
+  <tr><td>质检管理里跑扫描、跳到问题帧；编辑流程；返回标注修正</td><td>发布或取消版本</td></tr>
 </table>
 
-<h2 id="flow">审核流程</h2>
-<figure class="step"><figcaption class="step-title"><b>第 1 步　等提交</b><span>标注员没提交前，任务停在「人工标注」，页面会提示由指定负责人检查并确认</span></figcaption><img data-rel="images/steps/reviewer-2.jpg" src="../images/steps/reviewer-2.jpg" alt="第 1 步　等提交" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 2 步　找验收按钮</b><span>任务进入「人工验收」后：① 查看视频质检　② 质检通过　③ 打回重标</span></figcaption><img data-rel="images/steps/review-1.jpg" src="../images/steps/review-1.jpg" alt="第 2 步　找验收按钮" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 3 步　逐条检查</b><span>进入只读工作台，播放视频核对片段边界、描述、目标框；只能看不能改</span></figcaption><img data-rel="images/steps/review-2.jpg" src="../images/steps/review-2.jpg" alt="第 3 步　逐条检查" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 4 步　通过</b><span>确认无误点「质检通过」，系统随后自动跑程序质检并发布新版本</span></figcaption><img data-rel="images/steps/review-3.jpg" src="../images/steps/review-3.jpg" alt="第 4 步　通过" loading="lazy"></figure>
-<figure class="step"><figcaption class="step-title"><b>第 5 步　看结果</b><span>任务变成「已完成」，五个节点全部通过</span></figcaption><img data-rel="images/steps/release-1.jpg" src="../images/steps/release-1.jpg" alt="第 5 步　看结果" loading="lazy"></figure>
-<p>平时也可以用「质检管理」对某个数据集跑一遍程序质检，它会列出有问题的帧，点一下就能跳过去看。</p>
-<figure class="step"><figcaption class="step-title"><b>辅助：质检管理</b><span>选数据集，点右上角「扫描」；结果按 Episode 分组，可跳到问题帧</span></figcaption><img data-rel="images/steps/reviewer-1.jpg" src="../images/steps/reviewer-1.jpg" alt="辅助：质检管理" loading="lazy"></figure>
+<h2 id="create">建任务</h2>
+<figure class="step"><figcaption class="step-title"><b>第 1 步　填任务表单</b><span>① 任务名称　② 关联数据集　③ 标注负责人（必须选标注员或管理员）　④ 审核负责人（选自己或别的审核员）</span></figcaption><img data-rel="images/steps/task-create-1.jpg" src="../images/steps/task-create-1.jpg" alt="第 1 步　填任务表单" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 2 步　确认后创建</b><span>四项都填好，在页面底部点「创建任务」</span></figcaption><img data-rel="images/steps/task-create-2.jpg" src="../images/steps/task-create-2.jpg" alt="第 2 步　确认后创建" loading="lazy"></figure>
+<p>创建后任务自动跑完「预处理」，停在「人工标注」，等标注员开工。</p>
 
-<h2 id="reject">打回时要写什么</h2>
+<h2 id="flow">验收流程</h2>
+<figure class="step"><figcaption class="step-title"><b>第 3 步　等提交</b><span>标注员没提交前，任务停在「人工标注」，页面提示由指定负责人检查并确认</span></figcaption><img data-rel="images/steps/reviewer-2.jpg" src="../images/steps/reviewer-2.jpg" alt="第 3 步　等提交" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 4 步　找验收按钮</b><span>任务进入「人工验收」后：① 查看视频质检　② 质检通过　③ 打回重标</span></figcaption><img data-rel="images/steps/review-1.jpg" src="../images/steps/review-1.jpg" alt="第 4 步　找验收按钮" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 5 步　逐条检查</b><span>进入只读工作台，播放视频核对片段边界、描述、目标框；只能看不能改</span></figcaption><img data-rel="images/steps/review-2.jpg" src="../images/steps/review-2.jpg" alt="第 5 步　逐条检查" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>第 6 步　通过</b><span>确认无误点「质检通过」，系统随后自动跑程序质检并发布新版本</span></figcaption><img data-rel="images/steps/review-3.jpg" src="../images/steps/review-3.jpg" alt="第 6 步　通过" loading="lazy"></figure>
+
+<h2 id="qc">质检管理</h2>
+<p>不用等提交，也可以主动对某个数据集跑一遍程序质检，它会列出有问题的帧。</p>
+<figure class="step"><figcaption class="step-title"><b>随时可用</b><span>选数据集，点右上角「扫描」；结果按 Episode 分组，点一下跳到问题帧</span></figcaption><img data-rel="images/steps/reviewer-1.jpg" src="../images/steps/reviewer-1.jpg" alt="随时可用" loading="lazy"></figure>
+
+<h2 id="reject">打回原因怎么写</h2>
 <p>打回必须填写原因，这段话会直接显示在标注员的任务里。写得越具体，来回越少：</p>
 <table>
   <tr><th>不好的写法</th><th>好的写法</th></tr>
@@ -48,11 +54,15 @@
   <tr><td>框偏了</td><td>Episode 0「抓取食物」的目标框框到了两个碗，只标被拿的那个</td></tr>
   <tr><td>描述有问题</td><td>Episode 2 的目标应填「托盘」，现在填的是「桌子」</td></tr>
 </table>
-<p>另外，如果某条 Episode 确实没法用，可以让标注员用「数据不可用，跳过标注」并填写原因，程序质检会采纳这个原因；没填原因跳过，程序质检不通过。</p>
+<div class="note">某条 Episode 确实没法用时，让标注员用「数据不可用，跳过标注」并填写原因；没填原因跳过，程序质检不通过。</div>
 
-    <nav class="pager"><a href="role-annotator.html"><span class="k">上一页</span>标注员</a><a class="next" href="guide-login.html"><span class="k">下一页</span>1. 登录与数据管理</a></nav>
+<h2 id="result">发布结果</h2>
+<figure class="step"><figcaption class="step-title"><b>验收完成后</b><span>任务状态变成「已完成」，五个节点全部通过</span></figcaption><img data-rel="images/steps/release-1.jpg" src="../images/steps/release-1.jpg" alt="验收完成后" loading="lazy"></figure>
+<figure class="step"><figcaption class="step-title"><b>在「版本管理」确认产物</b><span>① ② 每次发布都是独立版本，有校验摘要和完整数据包，旧版本不会被覆盖</span></figcaption><img data-rel="images/steps/versions-1.jpg" src="../images/steps/versions-1.jpg" alt="在「版本管理」确认产物" loading="lazy"></figure>
+
+    <nav class="pager"><a href="role-annotator.html"><span class="k">上一页</span>标注员</a><a class="next" href="faq.html"><span class="k">下一页</span>常见问题</a></nav>
   </main>
-  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#flow">审核流程</a><a href="#reject">打回时要写什么</a></aside>
+  <aside class="toc-right"><p class="t">本页</p><a href="#can">能做什么</a><a href="#create">建任务</a><a href="#flow">验收流程</a><a href="#qc">质检管理</a><a href="#reject">打回原因怎么写</a><a href="#result">发布结果</a></aside>
 </div>
 <footer>LabelVLA 文档</footer>
 <script>
